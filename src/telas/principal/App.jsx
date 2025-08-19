@@ -6,7 +6,9 @@ import { Stage, Layer, Rect, Text } from "react-konva";
 function Principal() {
 
   return (
-    <p>Teste Principal</p>
+    <Stage>
+      
+    </Stage>
   );
 }
 
