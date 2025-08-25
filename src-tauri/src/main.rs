@@ -1,11 +1,13 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-mod meudb;
-
-use meudb::criar_db;
+mod caminhos;
+mod servidor;
+mod inicializador;
 
 fn main() {
-    criar_db();
+    let serv = servidor::iniciar(None).expect("Falha ao iniciar servidor");
+
+    inicializador::inicializar();
     themarker_lib::run()
 }
