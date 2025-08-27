@@ -1,108 +1,78 @@
+mod extras;
+mod rotas;
+
+use actix_web::Error;
+use rotas::{echo, get_user, health, index};
+
 use std::io;
 use std::thread::{self, JoinHandle};
 
-use actix_web::{dev::ServerHandle, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{dev::ServerHandle, web, App, HttpServer};
+use std::net::TcpListener;
 
-/// Controlador do servidor: guarda o handle e a thread.
+pub enum MODELO {
+    FECHADO,
+    ABERTO,
+}
+
 pub struct Servidor {
-    handle: ServerHandle,
+    handle: Option<ServerHandle>,
     thread: Option<JoinHandle<io::Result<()>>>,
+
+    modelo: MODELO,
+    porta: Option<&'static str>,
 }
 
 impl Servidor {
-    /// Para o servidor de forma síncrona (consome self).
-    /// Se `graceful` for true, aguarda parada graciosa.
-    pub fn parar(mut self, graceful: bool) -> io::Result<()> {
-        // Solicita parada ao server (future) e block_on usando um System temporário.
-        actix_web::rt::System::new().block_on(self.handle.stop(graceful));
-
-        // Junta a thread que executa o servidor para garantir término.
-        if let Some(join) = self.thread.take() {
-            match join.join() {
-                Ok(Ok(())) => Ok(()),
-                Ok(Err(e)) => Err(e),
-                Err(_) => Err(io::Error::new(io::ErrorKind::Other, "thread join failed")),
-            }
-        } else {
-            Ok(())
+    pub fn novo(modelo: MODELO, porta: &'static str) -> Self {
+        Self {
+            handle: None,
+            thread: None,
+            modelo: modelo,
+            porta: Some(porta),
         }
     }
-}
 
-fn criar_url(base: Option<String>, porta: Option<String>) -> String {
-    let url = format!("{}:{}", base.unwrap_or_else(|| "127.0.0.1".into()), porta.unwrap_or_else(|| "8080".into()));
-    url
-}
+    pub fn criar_url(&self) -> String {
+        let porta = self.porta.unwrap_or_else(|| "0".into());
 
-/// Inicia o servidor em background numa thread (sincronamente).
-/// `bind_addr` ex: "127.0.0.1:8080"
-pub fn iniciar(bind_addr: Option<String>) -> io::Result<Servidor> {
-    let a = bind_addr.unwrap_or_else(|| criar_url(None, None));
-    let bind_addr = a.as_str();
+        let modelo = match self.modelo {
+            MODELO::FECHADO => "127.0.0.1",
+            MODELO::ABERTO => "0.0.0.0",
+        };
 
-    println!("Iniciando servidor em http://{}", bind_addr);
+        let url = format!("{}:{}", modelo, porta);
+        url
+    }
 
-    // cria o Server future (bind pode falhar)
-    let server = HttpServer::new(|| {
-        App::new()
-            .route("/", web::get().to(index))
-            .route("/health", web::get().to(health))
-            .route("/user/{id}", web::get().to(get_user))
-            .route("/echo", web::post().to(echo))
-    })
-    .bind(bind_addr)? // retorna Err se bind falhar
-    .run();
+    pub fn iniciar(&mut self) -> Result<(), Error> {
+        let bind_addr = self.criar_url();
+        let bind_addr = bind_addr.as_str();
 
-    let handle = server.handle();
-    let bind = bind_addr.to_string();
+        let listener = TcpListener::bind(bind_addr)?;
+        let bind = listener.local_addr()?;
 
-    // Spawn em thread dedicada: executa o Future do server na System local
-    let join = thread::spawn(move || {
-        println!("Actix server thread: starting server at http://{}", bind);
-        actix_web::rt::System::new().block_on(server)
-    });
+        //println!("Iniciando servidor em http://{}", bind_addr);
 
-    println!("Servidor iniciado em background em http://{}", bind_addr);
+        let server = HttpServer::new(|| {
+            App::new()
+                .route("/", web::get().to(index))
+                .route("/health", web::get().to(health))
+                .route("/user/{id}", web::get().to(get_user))
+                .route("/echo", web::post().to(echo))
+        })
+        .listen(listener)?
+        .run();
 
-    Ok(Servidor {
-        handle,
-        thread: Some(join),
-    })
-}
+        self.handle = Some(server.handle());
 
-/* ------- Handlers ------- */
+        let join = thread::spawn(move || {
+            //println!("Actix server thread: starting server at http://{}", bind);
+            actix_web::rt::System::new().block_on(server)
+        });
 
-async fn index() -> impl Responder {
-    HttpResponse::Ok()
-        .content_type("text/plain; charset=utf-8")
-        .body("Olá — rota /")
-}
+        self.thread = Some(join);
 
-async fn health() -> impl Responder {
-    HttpResponse::Ok()
-        .content_type("text/plain; charset=utf-8")
-        .body("OK")
-}
-
-/// Path param: Actix já decodifica percent-encoding para UTF-8.
-/// Ex: /user/João (se o cliente enviar percent-encoded)
-async fn get_user(path: web::Path<String>) -> impl Responder {
-    let id = path.into_inner();
-    HttpResponse::Ok()
-        .content_type("text/plain; charset=utf-8")
-        .body(format!("Usuário: {}", id))
-}
-
-/// Recebe bytes, valida UTF-8 explicitamente e responde com o mesmo texto.
-/// Retorna 400 se o corpo não for UTF-8 válido.
-async fn echo(body: web::Bytes) -> impl Responder {
-    match String::from_utf8(body.to_vec()) {
-        Ok(s) => HttpResponse::Ok()
-                    .content_type("text/plain; charset=utf-8")
-                    .body(s),
-        Err(_) => HttpResponse::BadRequest()
-                    .content_type("text/plain; charset=utf-8")
-                    .body("Invalid UTF-8 in request body"),
-
+        Ok(())
     }
 }

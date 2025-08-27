@@ -6,7 +6,7 @@ mod servidor;
 mod inicializador;
 
 fn main() {
-    let serv = servidor::iniciar(None).expect("Falha ao iniciar servidor");
+    // let serv = servidor::iniciar(None).expect("Falha ao iniciar servidor");
 
     inicializador::inicializar();
     themarker_lib::run()
