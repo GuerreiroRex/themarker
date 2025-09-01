@@ -1,13 +1,11 @@
-mod extras;
 mod rotas;
 
 use actix_web::Error;
 use rotas::{echo, get_user, health, index};
 
-use std::io;
-use std::thread::{self, JoinHandle};
+use std::thread::{self};
 
-use actix_web::{dev::ServerHandle, web, App, HttpServer};
+use actix_web::{web, App, HttpServer};
 use std::net::TcpListener;
 
 pub enum MODELO {
@@ -16,25 +14,25 @@ pub enum MODELO {
 }
 
 pub struct Servidor {
-    handle: Option<ServerHandle>,
-    thread: Option<JoinHandle<io::Result<()>>>,
-
     modelo: MODELO,
-    porta: Option<&'static str>,
+    porta: u16,
+    url: String,
 }
 
 impl Servidor {
-    pub fn novo(modelo: MODELO, porta: &'static str) -> Self {
-        Self {
-            handle: None,
-            thread: None,
+    pub fn novo(modelo: MODELO, porta: u16) -> Self {
+        let mut servidor = Self {
             modelo: modelo,
-            porta: Some(porta),
-        }
+            porta: porta,
+            url: String::new(),
+        };
+
+        servidor.url = servidor.criar_url();
+        servidor
     }
 
     pub fn criar_url(&self) -> String {
-        let porta = self.porta.unwrap_or_else(|| "0".into());
+        let porta = self.porta;
 
         let modelo = match self.modelo {
             MODELO::FECHADO => "127.0.0.1",
@@ -46,13 +44,11 @@ impl Servidor {
     }
 
     pub fn iniciar(&mut self) -> Result<(), Error> {
-        let bind_addr = self.criar_url();
-        let bind_addr = bind_addr.as_str();
-
+        let bind_addr = self.url.as_str();
         let listener = TcpListener::bind(bind_addr)?;
-        let bind = listener.local_addr()?;
 
-        //println!("Iniciando servidor em http://{}", bind_addr);
+        let bind = listener.local_addr()?;
+        self.porta = bind.port();
 
         let server = HttpServer::new(|| {
             App::new()
@@ -64,14 +60,7 @@ impl Servidor {
         .listen(listener)?
         .run();
 
-        self.handle = Some(server.handle());
-
-        let join = thread::spawn(move || {
-            //println!("Actix server thread: starting server at http://{}", bind);
-            actix_web::rt::System::new().block_on(server)
-        });
-
-        self.thread = Some(join);
+        let _join = thread::spawn(move || actix_web::rt::System::new().block_on(server));
 
         Ok(())
     }

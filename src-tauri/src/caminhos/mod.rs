@@ -1,27 +1,22 @@
-use std::fs;
+use std::fs::create_dir_all;
 use directories_next::ProjectDirs;
-use once_cell::sync::Lazy;
+use std::path::PathBuf;
 
-pub struct Caminhos {
-    pub caminho_pasta_sys: String,
-    pub caminho_arquivo_sys_db: String,
+pub fn criar_pasta(nome_pasta: &str) -> PathBuf {
+    let caminho_pasta = ProjectDirs::from("com", "themarker", nome_pasta).expect("Não foi possível encontrar.");
+    let caminho_pasta = caminho_pasta.data_dir();
+
+    create_dir_all(&caminho_pasta).expect("Erro ao criar o diretório.");
+    caminho_pasta.to_path_buf()
 }
 
-pub static CAMINHOS: Lazy<Caminhos> = Lazy::new(obter_caminhos);
+pub fn criar_projetos(nome_pasta: &str) -> PathBuf {
+    let caminho_projeto =
+        ProjectDirs::from("com", "themarker", "projetos").expect("Não foi possível encontrar.");
+    let caminho_projeto = caminho_projeto.data_dir().join(nome_pasta);
 
-pub fn obter_caminhos() -> Caminhos {
-    let caminho_projeto = ProjectDirs::from("com", "themarker", "system").expect("Não foi possível encontrar.");
-    
-    let caminho_pasta_sys = caminho_projeto.data_dir().to_path_buf();
-    let caminho_arquivo_sys_db = caminho_pasta_sys.join("meudb.db");
+    create_dir_all(&caminho_projeto).expect("Erro ao criar o diretório.");
 
-    return Caminhos {
-        caminho_pasta_sys: caminho_pasta_sys.to_string_lossy().to_string(),
-        caminho_arquivo_sys_db: caminho_arquivo_sys_db.to_string_lossy().to_string(),
-    };
-}
-
-pub fn criar_caminhos() {
-    let caminhos = obter_caminhos();
-    fs::create_dir_all(caminhos.caminho_pasta_sys.clone()).expect("Erro ao criar o diretório.");
+    println!("Caminho do projeto: {}", caminho_projeto.display());
+    caminho_projeto.to_path_buf()
 }
