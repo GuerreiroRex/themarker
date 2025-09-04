@@ -4,7 +4,7 @@
 mod caminhos;
 mod servidor;
 mod inicializador;
-mod meudb;
+mod enums;
 
 fn main() {
     // let serv = servidor::iniciar(None).expect("Falha ao iniciar servidor");

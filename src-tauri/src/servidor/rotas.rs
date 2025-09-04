@@ -1,10 +1,26 @@
 use actix_web::{web, HttpResponse, Responder};
+use std::sync::Arc;
 
-pub async fn index() -> impl Responder {
+use super::meudb::MeuDb;
+
+pub async fn index(meudata: web::Data<Arc<MeuDb>>) -> impl Responder {
+    let pessoas = meudata.ler_todos().await;
+    let resultado = pessoas
+        .iter()
+        .map(|p| p.name.as_str())
+        .collect::<Vec<_>>()
+        .join(", ");
+
+    HttpResponse::Ok()
+        .content_type("text/plain; charset=utf-8")
+        .body(format!("Olá — rota / (db: {})", resultado))
+}
+
+/* pub async fn index() -> impl Responder {
     HttpResponse::Ok()
         .content_type("text/plain; charset=utf-8")
         .body("Olá — rota /")
-}
+} */
 
 pub async fn health() -> impl Responder {
     HttpResponse::Ok()
@@ -18,7 +34,6 @@ pub async fn get_user(path: web::Path<String>) -> impl Responder {
         .content_type("text/plain; charset=utf-8")
         .body(format!("Usuário: {}", id))
 }
-
 
 /// Recebe bytes, valida UTF-8 explicitamente e responde com o mesmo texto.
 /// Retorna 400 se o corpo não for UTF-8 válido.

@@ -1,57 +1,58 @@
-mod rotas;
+pub mod meudb;
+pub mod rotas;
 
-use actix_web::Error;
+use crate::enums::Modelo;
 use rotas::{echo, get_user, health, index};
-
-use std::thread::{self};
+use meudb::MeuDb;
 
 use actix_web::{web, App, HttpServer};
 use std::net::TcpListener;
-
-pub enum MODELO {
-    FECHADO,
-    ABERTO,
-}
+use std::sync::Arc;
+use std::thread;
 
 pub struct Servidor {
-    modelo: MODELO,
+    modelo: Modelo,
     porta: u16,
-    url: String,
+    db: web::Data<Arc<MeuDb>>,
 }
 
 impl Servidor {
-    pub fn novo(modelo: MODELO, porta: u16) -> Self {
+    pub fn novo(modelo: Modelo) -> Self {
+        let meu_db = Arc::new(futures::executor::block_on(MeuDb::novo()));
+        let db_data = web::Data::new(meu_db.clone());
+
         let mut servidor = Self {
-            modelo: modelo,
-            porta: porta,
-            url: String::new(),
+            modelo,
+            porta: 0,
+            db: db_data,
         };
 
-        servidor.url = servidor.criar_url();
+        match servidor.iniciar() {
+            Ok(p) => servidor.porta = p,
+            Err(e) => eprintln!("Incapaz de criar a porta: {}", e),
+        }
+
+        println!("Servidor aberto em: {}", servidor.criar_url());
         servidor
     }
 
-    pub fn criar_url(&self) -> String {
-        let porta = self.porta;
-
-        let modelo = match self.modelo {
-            MODELO::FECHADO => "127.0.0.1",
-            MODELO::ABERTO => "0.0.0.0",
-        };
-
-        let url = format!("{}:{}", modelo, porta);
-        url
+    fn criar_url(&self) -> String {
+        format!("http://{}:{}", self.modelo.base_url(), self.porta)
     }
 
-    pub fn iniciar(&mut self) -> Result<(), Error> {
-        let bind_addr = self.url.as_str();
-        let listener = TcpListener::bind(bind_addr)?;
+    pub fn iniciar(&self) -> std::io::Result<u16> {
+        let meuurl = self.criar_url();
+        let bind_addr = meuurl.as_str();
+        let listener: TcpListener = TcpListener::bind(&bind_addr)?;
 
-        let bind = listener.local_addr()?;
-        self.porta = bind.port();
+        let local_addr = listener.local_addr()?;
+        let assigned_port = local_addr.port();
 
-        let server = HttpServer::new(|| {
+        let meudata = self.db.clone();
+
+        let server = HttpServer::new(move || {
             App::new()
+                .app_data(meudata.clone())
                 .route("/", web::get().to(index))
                 .route("/health", web::get().to(health))
                 .route("/user/{id}", web::get().to(get_user))
@@ -60,8 +61,10 @@ impl Servidor {
         .listen(listener)?
         .run();
 
-        let _join = thread::spawn(move || actix_web::rt::System::new().block_on(server));
+        let _join = thread::spawn(move || {
+            actix_web::rt::System::new().block_on(server)
+        });
 
-        Ok(())
+        Ok(assigned_port)
     }
 }
