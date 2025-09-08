@@ -5,6 +5,7 @@ mod caminhos;
 mod servidor;
 mod inicializador;
 mod enums;
+mod tabelas;
 
 fn main() {
     // let serv = servidor::iniciar(None).expect("Falha ao iniciar servidor");

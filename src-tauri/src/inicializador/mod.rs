@@ -6,7 +6,8 @@ use crate::enums::Modelo;
 
 pub fn inicializar() {
     println!("Iniciando servidor");
-    let _ = Servidor::novo(Modelo::Fechado);
+    // let _ = Servidor::novo(Modelo::Fechado);
+    let _ = Servidor::novo(Modelo::Aberto);
     //MeuDB::novo("sistema", MODELO::FECHADO, 0);
     // let cell: OnceCell<Servidor> = OnceCell::new();
     // cell.get_or_init(|| Servidor::novo(MODELO::FECHADO, 0));

@@ -1,4 +1,5 @@
 use async_duckdb::{Client, ClientBuilder};
+use duckdb::{self, Params};
 use serde::Serialize;
 
 pub struct MeuDb {
@@ -20,31 +21,32 @@ impl MeuDb {
             .expect("failed to open async duckdb client");
 
         let meudb = MeuDb { cliente: client };
-        meudb.criar_tabela().await;
-        meudb.inserir_exemplos().await;
         meudb
     }
 
-    pub async fn executar(&self, comando: &'static str) {
-        self.cliente
-            .conn(|conn| {
-                conn.execute(comando, [])?;
-                Ok::<(), duckdb::Error>(())
-            })
-            .await
-            .expect("Falha na execução do comando.");
-    }
+    // pub async fn executar(&self, comando: &'static str) {
+    //     self.cliente
+    //         .conn(|conn| {
+    //             conn.execute(comando, [])?;
+    //             Ok::<(), duckdb::Error>(())
+    //         })
+    //         .await
+    //         .expect("Falha na execução do comando.");
+    // }
 
     /// 1. Cria a tabela users
-    pub async fn criar_tabela(&self) {
-        self.executar(
-            "CREATE TABLE IF NOT EXISTS users (
-            id INTEGER,
-            name TEXT NOT NULL
-        );",
-        )
-        .await;
-    }
+    // pub async fn criar_tabela(&self) {
+    //     self.executar(
+    //         "CREATE TABLE IF NOT EXISTS users (
+    //             id INTEGER,
+    //             name TEXT NOT NULL
+    //         );",
+    //         params![1i64, "João"],
+    //     )
+    //     .await;
+
+    //     ()
+    // }
 
     /// 2. Insere 5 registros de exemplo
     pub async fn inserir_exemplos(&self) {

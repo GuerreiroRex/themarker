@@ -37,12 +37,14 @@ impl Servidor {
     }
 
     fn criar_url(&self) -> String {
-        format!("http://{}:{}", self.modelo.base_url(), self.porta)
+        format!("{}:{}", self.modelo.base_url(), self.porta) //http://
     }
 
     pub fn iniciar(&self) -> std::io::Result<u16> {
         let meuurl = self.criar_url();
         let bind_addr = meuurl.as_str();
+
+        // println!("Bind address: http://{}", bind_addr);
         let listener: TcpListener = TcpListener::bind(&bind_addr)?;
 
         let local_addr = listener.local_addr()?;
