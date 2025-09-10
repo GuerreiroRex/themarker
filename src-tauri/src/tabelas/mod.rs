@@ -1,12 +1,3 @@
-// use async_duckdb::Client;
-use crate::servidor::meudb::MeuDb;
-use chrono::NaiveDate;
-// use meudb::MeuDb;
+pub mod projetos;
 
-// use crate::servidor::meudb;
-
-struct Projetos {
-    id: String,
-    nome: String,
-    data_criacao: NaiveDate,
-}
+pub use projetos::Projetos;

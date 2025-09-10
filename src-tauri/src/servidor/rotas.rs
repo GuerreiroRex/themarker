@@ -2,7 +2,9 @@ use actix_web::{web, HttpResponse, Responder};
 use std::sync::Arc;
 
 use super::meudb::MeuDb;
+use crate::tabelas::Projetos;
 
+/*
 pub async fn index(meudata: web::Data<Arc<MeuDb>>) -> impl Responder {
     let pessoas = meudata.ler_todos().await;
     let resultado = pessoas
@@ -15,12 +17,32 @@ pub async fn index(meudata: web::Data<Arc<MeuDb>>) -> impl Responder {
         .content_type("text/plain; charset=utf-8")
         .body(format!("Olá — rota / (db: {})", resultado))
 }
+*/
 
-/* pub async fn index() -> impl Responder {
+pub async fn index(meudata: web::Data<Arc<MeuDb>>) -> impl Responder {
+    
+    Projetos::criar_tabela(&meudata).await;
+
+    let projeto = Projetos::inserir_valor(&meudata, "novo_projeto1").await;
+    let projeto = Projetos::inserir_valor(&meudata, "novo_projeto2").await;
+    let projeto = Projetos::inserir_valor(&meudata, "novo_projeto3").await;
+
+    let lista = Projetos::ler_todos( &meudata ).await;
+    let abc: Vec<&str> = lista.iter().map(|p| p.nome.as_str()).collect::<Vec<_>>();
+    let resposta = abc.join(", ");
+
+    HttpResponse::Ok()
+        .content_type("text/plain; charset=utf-8")
+        .body(format!("Olá — rota / (db: {})", resposta))
+}
+
+/* 
+pub async fn index() -> impl Responder {
     HttpResponse::Ok()
         .content_type("text/plain; charset=utf-8")
         .body("Olá — rota /")
-} */
+}
+*/
 
 pub async fn health() -> impl Responder {
     HttpResponse::Ok()

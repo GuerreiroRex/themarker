@@ -33,3 +33,6 @@ async-duckdb = "0.2.0"
 tokio = "1.47.1"
 futures = "0.3.31"
 chrono = "0.4.41"
+rusqlite = {version = "0.37.0", features = ["chrono"] }
+
+uuid = { version = "1.18.1", features= ["v7"] }
