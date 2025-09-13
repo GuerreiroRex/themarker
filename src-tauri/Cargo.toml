@@ -36,3 +36,4 @@ chrono = "0.4.41"
 rusqlite = {version = "0.37.0", features = ["chrono"] }
 
 uuid = { version = "1.18.1", features= ["v7"] }
+local-ip-address = "0.6.5"

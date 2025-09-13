@@ -2,6 +2,7 @@ pub mod meudb;
 pub mod rotas;
 
 use crate::enums::Modelo;
+use crate::servidor::rotas::ler_projeto;
 use rotas::{echo, get_user, health, index};
 use meudb::MeuDb;
 
@@ -9,9 +10,11 @@ use actix_web::{web, App, HttpServer};
 use std::net::TcpListener;
 use std::sync::Arc;
 use std::thread;
+use local_ip_address::local_ip;
 
 pub struct Servidor {
     modelo: Modelo,
+    ip: String,
     porta: u16,
     db: web::Data<Arc<MeuDb>>,
 }
@@ -23,12 +26,16 @@ impl Servidor {
 
         let mut servidor = Self {
             modelo,
+            ip: "".to_string(),
             porta: 0,
             db: db_data,
         };
 
         match servidor.iniciar() {
-            Ok(p) => servidor.porta = p,
+            Ok(p) => {
+                servidor.ip = p.0;
+                servidor.porta = p.1;
+            },
             Err(e) => eprintln!("Incapaz de criar a porta: {}", e),
         }
 
@@ -37,10 +44,10 @@ impl Servidor {
     }
 
     fn criar_url(&self) -> String {
-        format!("{}:{}", self.modelo.base_url(), self.porta) //http://
+        format!("{}:{}", self.ip, self.porta)
     }
 
-    pub fn iniciar(&self) -> std::io::Result<u16> {
+    pub fn iniciar(&self) -> std::io::Result<(String, u16)> {
         let meuurl = self.criar_url();
         let bind_addr = meuurl.as_str();
 
@@ -50,6 +57,9 @@ impl Servidor {
         let local_addr = listener.local_addr()?;
         let assigned_port = local_addr.port();
 
+        //let assigned_ip = local_addr.ip().to_string();
+        let assigned_ip = local_ip().unwrap().to_string();
+
         let meudata = self.db.clone();
 
         let server = HttpServer::new(move || {
@@ -58,6 +68,7 @@ impl Servidor {
                 .route("/", web::get().to(index))
                 .route("/health", web::get().to(health))
                 .route("/user/{id}", web::get().to(get_user))
+                .route("/projetos/{id}", web::get().to(ler_projeto))
                 .route("/echo", web::post().to(echo))
         })
         .listen(listener)?
@@ -67,6 +78,6 @@ impl Servidor {
             actix_web::rt::System::new().block_on(server)
         });
 
-        Ok(assigned_port)
+        Ok((assigned_ip, assigned_port))
     }
 }

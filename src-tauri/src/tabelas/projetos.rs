@@ -1,13 +1,15 @@
 use crate::servidor::meudb::MeuDb;
 use actix_web::web;
-use chrono::Utc;
+use chrono::Local;
 use duckdb::params;
 use std::sync::Arc;
+use serde::{Serialize, Deserialize};
 
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Projetos {
     pub id: String,
     pub nome: String,
-    pub data_criacao: String, //DateTime<Utc>,
+    pub data_criacao: String,
 }
 
 impl Projetos {
@@ -16,7 +18,7 @@ impl Projetos {
             .cliente
             .conn(move |conexao| {
                 conexao.execute(
-                    "CREATE TABLE IF NOT EXISTS projetos (id STRING, nome STRING, data_criacao DATE)",
+                    "CREATE TABLE IF NOT EXISTS projetos (id STRING, nome STRING, data_criacao STRING)",
                     [],
                 )
             })
@@ -25,7 +27,7 @@ impl Projetos {
     }
 
     pub async fn inserir_valor(meudb: &web::Data<Arc<MeuDb>>, nome: &'static str) {
-        let data_criacao = Utc::now().to_rfc3339();
+        let data_criacao = Local::now().to_rfc3339();
 
         let _con = meudb
             .cliente
@@ -39,8 +41,8 @@ impl Projetos {
             .expect("Não foi possível executar a Query.");
     }
 
-    pub async fn ler_valor(&self, meudb: web::Data<Arc<MeuDb>>, id: &'static str) -> Projetos {
-        let projeto: Self = meudb
+    pub async fn ler_valor(meudb: web::Data<Arc<MeuDb>>, id: String) -> Option<Projetos> {
+        let projeto = meudb
             .cliente
             .conn(move |conexao| {
                 conexao.query_row(
@@ -55,21 +57,26 @@ impl Projetos {
                     },
                 )
             })
-            .await
-            .expect("Não foi possível executar a Query.");
+            .await;
 
-        projeto
+        let resultado: Option<Projetos> = match projeto {
+            Ok(valor) => Some(valor),
+            Err(error) => {
+                println!("Erro ao fazer query: {}", error);
+                None
+            }
+        };
+
+        resultado
     }
 
     pub async fn ler_todos(meudb: &web::Data<Arc<MeuDb>>) -> Vec<Projetos> {
         let lista = meudb
             .cliente
             .conn(|conn| {
-                let mut stmt = conn.prepare("SELECT id, nome FROM projetos WHERE id = ?")?;
+                let mut stmt = conn.prepare("SELECT id, nome FROM projetos;")?;
 
-                // executa a mesma statement com um parâmetro (Alice)
                 let rows = stmt.query_map(params![], |row| {
-                    // mapeia cada row para um tuple (id, name)
                     Ok(Self {
                         id: row.get::<_, String>(0)?,
                         nome: row.get::<_, String>(1)?,
@@ -81,9 +88,16 @@ impl Projetos {
 
                 Ok(projetos)
             })
-            .await
-            .expect("Não foi possível executar a Query.");
+            .await;
 
-        lista
+        let resultado = match lista {
+            Ok(valor) => valor,
+            Err(error) => {
+                println!("Erro ao fazer query: {}", error);
+                Vec::new()
+            }
+        };
+
+        resultado
     }
 }

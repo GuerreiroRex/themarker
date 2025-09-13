@@ -28,7 +28,7 @@ pub async fn index(meudata: web::Data<Arc<MeuDb>>) -> impl Responder {
     let projeto = Projetos::inserir_valor(&meudata, "novo_projeto3").await;
 
     let lista = Projetos::ler_todos( &meudata ).await;
-    let abc: Vec<&str> = lista.iter().map(|p| p.nome.as_str()).collect::<Vec<_>>();
+    let abc: Vec<&str> = lista.iter().map(|p| p.id.as_str()).collect::<Vec<_>>();
     let resposta = abc.join(", ");
 
     HttpResponse::Ok()
@@ -55,6 +55,21 @@ pub async fn get_user(path: web::Path<String>) -> impl Responder {
     HttpResponse::Ok()
         .content_type("text/plain; charset=utf-8")
         .body(format!("Usuário: {}", id))
+}
+
+
+pub async fn ler_projeto(path: web::Path<String>, meudata: web::Data<Arc<MeuDb>>) -> impl Responder {
+    let id = path.into_inner().to_string();
+
+    let resultado = Projetos::ler_valor(meudata, id).await;
+    let resposta = resultado.unwrap();
+
+    let jason = serde_json::to_string(&resposta).expect("Não conseguiu serializar.");
+    
+
+    HttpResponse::Ok()
+        .content_type("text/plain; charset=utf-8")
+        .body(jason)
 }
 
 /// Recebe bytes, valida UTF-8 explicitamente e responde com o mesmo texto.
