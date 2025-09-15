@@ -1,9 +1,10 @@
-use std::fs::create_dir_all;
 use directories_next::ProjectDirs;
+use std::fs::create_dir_all;
 use std::path::PathBuf;
 
 pub fn criar_pasta(nome_pasta: &str) -> PathBuf {
-    let caminho_pasta = ProjectDirs::from("com", "themarker", nome_pasta).expect("Não foi possível encontrar.");
+    let caminho_pasta =
+        ProjectDirs::from("com", "themarker", nome_pasta).expect("Não foi possível encontrar.");
     let caminho_pasta = caminho_pasta.data_dir();
 
     create_dir_all(&caminho_pasta).expect("Erro ao criar o diretório.");

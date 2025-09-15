@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="50mm"
+   height="50mm"
+   viewBox="0 0 45.454545 45.454544"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <g
+     id="layer1">
+    <g
+       id="g5"
+       transform="translate(-26.770941,-60.640853)">
+      <g
+         id="g4">
+        <rect
+           style="fill:#ffc74b;fill-opacity:1;stroke-width:0.264583"
+           id="rect2"
+           width="5"
+           height="30"
+           x="84.89856"
+           y="15.763023"
+           rx="2.5"
+           transform="rotate(45)" />
+        <rect
+           style="fill:#ffc74b;fill-opacity:1;stroke-width:0.324268"
+           id="rect2-0"
+           width="5"
+           height="45.061375"
+           x="71.842285"
+           y="-72.0289"
+           rx="2.5"
+           transform="rotate(90)" />
+      </g>
+      <g
+         id="g3">
+        <rect
+           style="fill:#ffc74b;fill-opacity:1;stroke-width:0.264583"
+           id="rect3"
+           width="5"
+           height="20"
+           x="92.072464"
+           y="18.289118"
+           rx="2.5"
+           transform="rotate(45)" />
+        <rect
+           style="fill:#ffc74b;fill-opacity:1;stroke-width:0.264583"
+           id="rect3-86"
+           width="5"
+           height="20"
+           x="99.590431"
+           y="10.771152"
+           rx="2.5"
+           transform="rotate(45)" />
+        <rect
+           style="fill:#ffc74b;fill-opacity:1;stroke-width:0.233756"
+           id="rect3-8"
+           width="5"
+           height="15.611"
+           x="49.71088"
+           y="79.070831"
+           rx="2.5" />
+        <rect
+           style="fill:#ffc74b;fill-opacity:1;stroke-width:0.233756"
+           id="rect3-8-6"
+           width="5"
+           height="15.611"
+           x="60.399998"
+           y="79.070831"
+           rx="2.5" />
+      </g>
+    </g>
+  </g>
+</svg>

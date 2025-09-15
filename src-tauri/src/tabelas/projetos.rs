@@ -2,8 +2,8 @@ use crate::servidor::meudb::MeuDb;
 use actix_web::web;
 use chrono::Local;
 use duckdb::params;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Projetos {

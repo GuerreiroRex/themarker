@@ -19,8 +19,9 @@ pub async fn index(meudata: web::Data<Arc<MeuDb>>) -> impl Responder {
 }
 */
 
+/*
 pub async fn index(meudata: web::Data<Arc<MeuDb>>) -> impl Responder {
-    
+
     Projetos::criar_tabela(&meudata).await;
 
     let projeto = Projetos::inserir_valor(&meudata, "novo_projeto1").await;
@@ -35,14 +36,13 @@ pub async fn index(meudata: web::Data<Arc<MeuDb>>) -> impl Responder {
         .content_type("text/plain; charset=utf-8")
         .body(format!("Olá — rota / (db: {})", resposta))
 }
+*/
 
-/* 
 pub async fn index() -> impl Responder {
     HttpResponse::Ok()
         .content_type("text/plain; charset=utf-8")
         .body("Olá — rota /")
 }
-*/
 
 pub async fn health() -> impl Responder {
     HttpResponse::Ok()
@@ -57,15 +57,16 @@ pub async fn get_user(path: web::Path<String>) -> impl Responder {
         .body(format!("Usuário: {}", id))
 }
 
-
-pub async fn ler_projeto(path: web::Path<String>, meudata: web::Data<Arc<MeuDb>>) -> impl Responder {
+pub async fn ler_projeto(
+    path: web::Path<String>,
+    meudata: web::Data<Arc<MeuDb>>,
+) -> impl Responder {
     let id = path.into_inner().to_string();
 
     let resultado = Projetos::ler_valor(meudata, id).await;
     let resposta = resultado.unwrap();
 
     let jason = serde_json::to_string(&resposta).expect("Não conseguiu serializar.");
-    
 
     HttpResponse::Ok()
         .content_type("text/plain; charset=utf-8")

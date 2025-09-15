@@ -3,14 +3,23 @@ pub mod rotas;
 
 use crate::enums::Modelo;
 use crate::servidor::rotas::ler_projeto;
-use rotas::{echo, get_user, health, index};
 use meudb::MeuDb;
+use rotas::{echo, get_user, health, index};
 
 use actix_web::{web, App, HttpServer};
+use local_ip_address::local_ip;
+use std::collections::HashMap;
 use std::net::TcpListener;
 use std::sync::Arc;
+use std::sync::OnceLock;
 use std::thread;
-use local_ip_address::local_ip;
+
+use lazy_static::lazy_static;
+use std::sync::Mutex;
+
+lazy_static! {
+    pub static ref DICIONARIO: Mutex<HashMap<String, Arc<Servidor>>> = Mutex::new(HashMap::new());
+}
 
 pub struct Servidor {
     modelo: Modelo,
@@ -20,7 +29,7 @@ pub struct Servidor {
 }
 
 impl Servidor {
-    pub fn novo(modelo: Modelo) -> Self {
+    pub fn novo(nome: String, modelo: Modelo) -> Arc<Self> {
         let meu_db = Arc::new(futures::executor::block_on(MeuDb::novo()));
         let db_data = web::Data::new(meu_db.clone());
 
@@ -32,18 +41,25 @@ impl Servidor {
         };
 
         match servidor.iniciar() {
-            Ok(p) => {
-                servidor.ip = p.0;
-                servidor.porta = p.1;
-            },
+            Ok((ip, porta)) => {
+                servidor.ip = ip;
+                servidor.porta = porta;
+            }
             Err(e) => eprintln!("Incapaz de criar a porta: {}", e),
         }
 
-        println!("Servidor aberto em: {}", servidor.criar_url());
-        servidor
+        println!("Servidor aberto em: http://{}", servidor.mostrar_url());
+
+        let mut dicionario = DICIONARIO.lock().unwrap();
+        dicionario.insert(nome.clone(), Arc::new(servidor));
+        dicionario.get(&nome).unwrap().clone()
     }
 
     fn criar_url(&self) -> String {
+        format!("{}:{}", self.modelo.base_url(), self.porta)
+    }
+
+    pub fn mostrar_url(&self) -> String {
         format!("{}:{}", self.ip, self.porta)
     }
 
@@ -74,9 +90,7 @@ impl Servidor {
         .listen(listener)?
         .run();
 
-        let _join = thread::spawn(move || {
-            actix_web::rt::System::new().block_on(server)
-        });
+        let _join = thread::spawn(move || actix_web::rt::System::new().block_on(server));
 
         Ok((assigned_ip, assigned_port))
     }
