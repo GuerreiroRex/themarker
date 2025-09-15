@@ -3,9 +3,11 @@ import { invoke } from "@tauri-apps/api/core";
 // import { fetch } from '@tauri-apps/plugin-http';
 import { fetch } from '@tauri-apps/plugin-http';
 
-const response = await fetch('http://10.102.37.150:63099/', {
+const response = await fetch('http://10.102.37.150:63822/', {
   method: 'GET',
 });
+
+console.log(response.json());
 
 
 
