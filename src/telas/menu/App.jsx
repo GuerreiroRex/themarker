@@ -3,12 +3,6 @@ import { invoke } from "@tauri-apps/api/core";
 // import { fetch } from '@tauri-apps/plugin-http';
 import { fetch } from '@tauri-apps/plugin-http';
 
-const response = await fetch('http://10.102.37.150:63822/', {
-  method: 'GET',
-});
-
-console.log(response.json());
-
 
 
 
@@ -18,8 +12,8 @@ import ModalCarregarProjeto from "../../componentes/modalCarregarProjeto/App.jsx
 function Menu() {
   const [modalVisivel, setModalVisivel] = useState(null);
 
-  const [servidor, setServidor] = useState("");
-  const [listaProjetos, setListaProjetos] = useState("");
+  const [servidor, setServidor] = useState(null);
+  const [listaProjetos, setListaProjetos] = useState([]);
 
   useEffect(() => {
     invoke("conseguir_servidor", { nome: "sistema" })
@@ -27,16 +21,31 @@ function Menu() {
       .catch((erro) => console.error("Erro ao chamar backend:", erro));
   }, []);
 
-  // useEffect(
-  //   async () => {
-  //     const response = await fetch(`http://${servidor}/`, {
-  //       method: 'GET',
-  //     });
+  useEffect(
+    () => {
 
-  //     setListaProjetos(response.status);
+      if (servidor) {
+        console.log("Iniciado com o servidor: ", `http://${servidor}/`)
 
-  //   }, [servidor]
-  // );
+        fetch(`http://${servidor}/projetos`, {
+          method: 'GET',
+        }).then((resp) => {
+          /* console.log(resp);
+          console.log(resp.json()); */
+          let abc = resp.json().then(
+            (conteudo) => {
+              console.log("abc: ", conteudo)
+              setListaProjetos(conteudo);
+              console.log(listaProjetos);
+            }
+          );
+
+        })
+      }
+
+
+    }, [servidor]
+  );
 
   return (
     <>
@@ -60,7 +69,13 @@ function Menu() {
         <p>{`http://${servidor}/` || "Carregando..."}</p>
       </div>
 
-      <p>{listaProjetos || "Carregando 2..."}</p>
+      <>{listaProjetos.length > 0 ?
+        listaProjetos.map(
+          (valor, indice) => {
+            return <p key={indice}>{valor.nome}</p>
+          }
+        )
+        : "Carregando 2..."}</>
 
 
     </>

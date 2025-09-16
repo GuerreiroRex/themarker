@@ -2,22 +2,26 @@ use actix_web::{web, HttpResponse, Responder};
 use std::sync::Arc;
 
 use super::meudb::MeuDb;
+use crate::servidor::DICIONARIO;
 use crate::tabelas::Projetos;
+use serde_json::{json, Value};
 
-/*
-pub async fn index(meudata: web::Data<Arc<MeuDb>>) -> impl Responder {
-    let pessoas = meudata.ler_todos().await;
-    let resultado = pessoas
-        .iter()
-        .map(|p| p.name.as_str())
-        .collect::<Vec<_>>()
-        .join(", ");
+pub async fn index() -> impl Responder {
+    let dicionario = DICIONARIO.lock().unwrap();
+    let chaves: Vec<&String> = dicionario.keys().collect();
+    
+
+    let lista: Vec<Value> = chaves
+        .into_iter()
+        .map(|nome| json!({ "nome": nome }))
+        .collect();
+
+    let resposta = serde_json::to_string(&lista).unwrap();
 
     HttpResponse::Ok()
         .content_type("text/plain; charset=utf-8")
-        .body(format!("Olá — rota / (db: {})", resultado))
+        .body(resposta)
 }
-*/
 
 /*
 pub async fn index(meudata: web::Data<Arc<MeuDb>>) -> impl Responder {
@@ -38,11 +42,13 @@ pub async fn index(meudata: web::Data<Arc<MeuDb>>) -> impl Responder {
 }
 */
 
+/*
 pub async fn index() -> impl Responder {
     HttpResponse::Ok()
         .content_type("text/plain; charset=utf-8")
         .body("Olá — rota /")
 }
+*/
 
 pub async fn health() -> impl Responder {
     HttpResponse::Ok()
@@ -84,4 +90,21 @@ pub async fn echo(body: web::Bytes) -> impl Responder {
             .content_type("text/plain; charset=utf-8")
             .body("Invalid UTF-8 in request body"),
     }
+}
+
+pub async fn ler_todos_projetos()  -> impl Responder {
+    let dicionario = DICIONARIO.lock().unwrap();
+    let chaves: Vec<&String> = dicionario.keys().collect();
+    
+
+    let lista: Vec<Value> = chaves
+        .into_iter()
+        .map(|nome| json!({ "nome": nome }))
+        .collect();
+
+    let resposta = serde_json::to_string(&lista).unwrap();
+
+    HttpResponse::Ok()
+        .content_type("text/plain; charset=utf-8")
+        .body(resposta)   
 }

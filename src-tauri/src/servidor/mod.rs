@@ -2,16 +2,15 @@ pub mod meudb;
 pub mod rotas;
 
 use crate::enums::Modelo;
-use crate::servidor::rotas::ler_projeto;
 use meudb::MeuDb;
-use rotas::{echo, get_user, health, index};
+use rotas::{echo, get_user, health, index, ler_projeto, ler_todos_projetos};
 
 use actix_web::{web, App, HttpServer};
 use local_ip_address::local_ip;
 use std::collections::HashMap;
 use std::net::TcpListener;
 use std::sync::Arc;
-use std::sync::OnceLock;
+
 use std::thread;
 
 use lazy_static::lazy_static;
@@ -86,6 +85,7 @@ impl Servidor {
                 .route("/user/{id}", web::get().to(get_user))
                 .route("/projetos/{id}", web::get().to(ler_projeto))
                 .route("/echo", web::post().to(echo))
+                .route("/projetos", web::get().to(ler_todos_projetos))
         })
         .listen(listener)?
         .run();
