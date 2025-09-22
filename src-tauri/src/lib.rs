@@ -9,6 +9,8 @@ pub mod enums;
 pub mod inicializador;
 pub mod servidor;
 pub mod tabelas;
+pub mod rotas;
+pub mod meudb;
 
 #[tauri::command]
 fn greet(name: &str) -> String {

@@ -1,9 +1,6 @@
-pub mod meudb;
-pub mod rotas;
-
 use crate::enums::Modelo;
-use meudb::MeuDb;
-use rotas::{echo, get_user, health, index, ler_projeto, ler_todos_projetos};
+use crate::meudb::BancoDeDados;
+use crate::rotas;
 
 use actix_web::{web, App, HttpServer};
 use local_ip_address::local_ip;
@@ -24,13 +21,18 @@ pub struct Servidor {
     modelo: Modelo,
     ip: String,
     porta: u16,
-    db: web::Data<Arc<MeuDb>>,
+    db: web::Data<Arc<BancoDeDados>>,
 }
 
 impl Servidor {
     pub fn novo(nome: String, modelo: Modelo) -> Arc<Self> {
-        let meu_db = Arc::new(futures::executor::block_on(MeuDb::novo()));
-        let db_data = web::Data::new(meu_db.clone());
+        let meu_db = Arc::new(futures::executor::block_on(BancoDeDados::novo(
+            nome.clone(),
+        )));
+        // let db_data = web::Data::new(meu_db.clone());
+
+        futures::executor::block_on(meu_db.salvar());
+        let db_data = web::Data::new(meu_db);
 
         let mut servidor = Self {
             modelo,
@@ -80,12 +82,12 @@ impl Servidor {
         let server = HttpServer::new(move || {
             App::new()
                 .app_data(meudata.clone())
-                .route("/", web::get().to(index))
-                .route("/health", web::get().to(health))
-                .route("/user/{id}", web::get().to(get_user))
-                .route("/projetos/{id}", web::get().to(ler_projeto))
-                .route("/echo", web::post().to(echo))
-                .route("/projetos", web::get().to(ler_todos_projetos))
+                .route("/", web::get().to(rotas::index))
+                .route("/projetos", web::get().to(rotas::ler_projetos))
+                .route("/projetos/ler/{id}", web::get().to(rotas::ler_projeto))
+            // .route("/projetos/apagar/{id}", web::delete().to(rotas::apagar_projeto)) // Mudado para DELETE
+            // .route("/projetos/atualizar/{id}", web::put().to(rotas::atualizar_projeto)) // Mudado para PUT
+            // .route("/projetos/criar", web::post().to(rotas::criar_projeto)) // Removido {id} da URL
         })
         .listen(listener)?
         .run();

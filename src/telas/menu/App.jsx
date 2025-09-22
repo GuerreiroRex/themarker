@@ -5,8 +5,7 @@ import { fetch } from '@tauri-apps/plugin-http';
 
 
 
-
-import ModalNovoProjeto from "../../componentes/modalNovoProjeto/App.jsx";
+import ModalHospedarProjeto from "../../componentes/modalHospedarProjeto/App.jsx";
 import ModalCarregarProjeto from "../../componentes/modalCarregarProjeto/App.jsx";
 
 function Menu() {
@@ -17,9 +16,12 @@ function Menu() {
 
   useEffect(() => {
     invoke("conseguir_servidor", { nome: "sistema" })
-      .then((resposta) => setServidor(resposta))
+      .then((resposta) => sessionStorage.setItem("servidor", resposta))
       .catch((erro) => console.error("Erro ao chamar backend:", erro));
   }, []);
+
+
+  
 
   useEffect(
     () => {
@@ -51,7 +53,7 @@ function Menu() {
     <>
       {
         (modalVisivel == "novo") &&
-        <ModalNovoProjeto fecharmodal={() => { setModalVisivel(null) }} />
+        <ModalHospedarProjeto fecharmodal={() => { setModalVisivel(null) }} />
       }
       {
         (modalVisivel == "carregar") &&

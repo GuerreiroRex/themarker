@@ -1,4 +1,5 @@
-use crate::servidor::meudb::MeuDb;
+use crate::meudb::BancoDeDados;
+
 use actix_web::web;
 use chrono::Local;
 use duckdb::params;
@@ -13,8 +14,8 @@ pub struct Projetos {
 }
 
 impl Projetos {
-    pub async fn criar_tabela(meudb: &web::Data<Arc<MeuDb>>) {
-        let _con = meudb
+    pub async fn create_table(meudb: &web::Data<Arc<BancoDeDados>>) {
+        meudb
             .cliente
             .conn(move |conexao| {
                 conexao.execute(
@@ -26,7 +27,7 @@ impl Projetos {
             .expect("Não foi possível executar a Query.");
     }
 
-    pub async fn inserir_valor(meudb: &web::Data<Arc<MeuDb>>, nome: &'static str) {
+    pub async fn create(meudb: &web::Data<Arc<BancoDeDados>>, nome: &'static str) {
         let data_criacao = Local::now().to_rfc3339();
 
         let _con = meudb
@@ -41,7 +42,7 @@ impl Projetos {
             .expect("Não foi possível executar a Query.");
     }
 
-    pub async fn ler_valor(meudb: web::Data<Arc<MeuDb>>, id: String) -> Option<Projetos> {
+    pub async fn read(meudb: web::Data<Arc<BancoDeDados>>, id: String) -> Option<Projetos> {
         let projeto = meudb
             .cliente
             .conn(move |conexao| {
@@ -70,34 +71,53 @@ impl Projetos {
         resultado
     }
 
-    pub async fn ler_todos(meudb: &web::Data<Arc<MeuDb>>) -> Vec<Projetos> {
+    pub async fn read_all(meudb: &web::Data<Arc<BancoDeDados>>) -> Vec<Projetos> {
         let lista = meudb
             .cliente
             .conn(|conn| {
-                let mut stmt = conn.prepare("SELECT id, nome FROM projetos;")?;
-
+                let mut stmt = conn.prepare("SELECT id, nome, data_criacao FROM projetos;")?;
                 let rows = stmt.query_map(params![], |row| {
                     Ok(Self {
-                        id: row.get::<_, String>(0)?,
-                        nome: row.get::<_, String>(1)?,
-                        data_criacao: String::from(""),
+                        id: row.get(0)?,
+                        nome: row.get(1)?,
+                        data_criacao: row.get(2)?,
                     })
                 })?;
-
-                let projetos = rows.collect::<Result<Vec<Self>, duckdb::Error>>()?;
-
-                Ok(projetos)
+                rows.collect::<Result<Vec<Self>, duckdb::Error>>()
             })
             .await;
 
-        let resultado = match lista {
-            Ok(valor) => valor,
-            Err(error) => {
-                println!("Erro ao fazer query: {}", error);
-                Vec::new()
-            }
-        };
+        lista.unwrap_or_else(|error| {
+            println!("Erro ao fazer query: {}", error);
+            Vec::new()
+        })
+    }
 
-        resultado
+    pub async fn update(
+        meudb: &web::Data<Arc<BancoDeDados>>,
+        id: String,
+        novo_nome: String,
+    ) -> Result<(), async_duckdb::Error> {
+        meudb
+            .cliente
+            .conn(move |conexao| {
+                conexao.execute(
+                    "UPDATE projetos SET nome = ? WHERE id = ?;",
+                    params![novo_nome, id],
+                )
+            })
+            .await
+            .map(|_| ())
+    }
+
+    pub async fn delete(
+        meudb: &web::Data<Arc<BancoDeDados>>,
+        id: String,
+    ) -> Result<(), async_duckdb::Error> {
+        meudb
+            .cliente
+            .conn(move |conexao| conexao.execute("DELETE FROM projetos WHERE id = ?;", params![id]))
+            .await
+            .map(|_| ())
     }
 }
