@@ -33,6 +33,25 @@ pub async fn ler_projetos(meudata: web::Data<Arc<BancoDeDados>>) -> impl Respond
     }
 }
 
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct Projeto {
+    nome: String,
+}
+
+pub async fn criar_projeto(
+    meudata: web::Data<Arc<BancoDeDados>>,
+    recebido: web::Json<Projeto>,
+) -> impl Responder {
+    let resposta = recebido.into_inner();
+    let nome = resposta.nome;
+
+    futures::executor::block_on( Projetos::create(&meudata, nome) );
+
+    HttpResponse::Ok()
+        .content_type("application/json; charset=utf-8")
+        .body("OK")
+}
+
 // pub async fn ler_todos_projetos() -> impl Responder {
 //     let dicionario = DICIONARIO.lock().unwrap();
 //     let chaves: Vec<&String> = dicionario.keys().collect();

@@ -11,7 +11,8 @@ pub fn conseguir_servidor(nome: &str) -> String {
 pub fn inicializar() {
     println!("Iniciando servidor");
     // let _ = Servidor::novo(Modelo::Fechado);
-    let _ = Servidor::novo("sistema".to_string(), Modelo::Aberto);
+    // let _ = Servidor::novo("sistema".to_string(), Modelo::Aberto);
+    let _ = Servidor::novo("sistema".to_string(), Modelo::Fechado);
     //MeuDB::novo("sistema", MODELO::FECHADO, 0);
     // let cell: OnceCell<Servidor> = OnceCell::new();
     // cell.get_or_init(|| Servidor::novo(MODELO::FECHADO, 0));

@@ -29,9 +29,7 @@ impl Servidor {
         let meu_db = Arc::new(futures::executor::block_on(BancoDeDados::novo(
             nome.clone(),
         )));
-        // let db_data = web::Data::new(meu_db.clone());
-
-        futures::executor::block_on(meu_db.salvar());
+        
         let db_data = web::Data::new(meu_db);
 
         let mut servidor = Self {
@@ -85,9 +83,11 @@ impl Servidor {
                 .route("/", web::get().to(rotas::index))
                 .route("/projetos", web::get().to(rotas::ler_projetos))
                 .route("/projetos/ler/{id}", web::get().to(rotas::ler_projeto))
+                //.route("/projetos/criar/{nome}", web::p().to(rotas::criar_projeto)) // Removido {id} da URL
+                .route("/projetos/criar", web::post().to(rotas::criar_projeto))
             // .route("/projetos/apagar/{id}", web::delete().to(rotas::apagar_projeto)) // Mudado para DELETE
             // .route("/projetos/atualizar/{id}", web::put().to(rotas::atualizar_projeto)) // Mudado para PUT
-            // .route("/projetos/criar", web::post().to(rotas::criar_projeto)) // Removido {id} da URL
+            
         })
         .listen(listener)?
         .run();
