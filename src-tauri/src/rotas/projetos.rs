@@ -1,10 +1,8 @@
 use crate::meudb::BancoDeDados;
-// use crate::servidor::DICIONARIO;
 use crate::tabelas::Projetos;
 
 use actix_web::{web, HttpResponse, Responder};
 use std::sync::Arc;
-// use serde_json::{json, Value};
 
 pub async fn ler_projeto(
     path: web::Path<String>,
@@ -12,7 +10,7 @@ pub async fn ler_projeto(
 ) -> impl Responder {
     let id = path.into_inner().to_string();
 
-    let resultado = Projetos::read(meudata, id).await;
+    let resultado = Projetos::read(&meudata, id).await;
     let resposta = resultado.unwrap();
 
     let jason = serde_json::to_string(&resposta).expect("Não conseguiu serializar.");
@@ -45,25 +43,37 @@ pub async fn criar_projeto(
     let resposta = recebido.into_inner();
     let nome = resposta.nome;
 
-    futures::executor::block_on( Projetos::create(&meudata, nome) );
+    futures::executor::block_on(Projetos::create(&meudata, nome));
 
     HttpResponse::Ok()
         .content_type("application/json; charset=utf-8")
         .body("OK")
 }
 
-// pub async fn ler_todos_projetos() -> impl Responder {
-//     let dicionario = DICIONARIO.lock().unwrap();
-//     let chaves: Vec<&String> = dicionario.keys().collect();
+// pub async fn atualizar_projeto(
+//     meudata: web::Data<Arc<BancoDeDados>>,
+//     recebido: web::Json<Projeto>,
+// ) -> impl Responder {
+//     let resposta = recebido.into_inner();
+//     let nome = resposta.nome;
 
-//     let lista: Vec<Value> = chaves
-//         .into_iter()
-//         .map(|nome| json!({ "nome": nome }))
-//         .collect();
-
-//     let resposta = serde_json::to_string(&lista).unwrap();
+//     futures::executor::block_on(Projetos::update(&meudata, nome));
 
 //     HttpResponse::Ok()
 //         .content_type("application/json; charset=utf-8")
-//         .body(resposta)
+//         .body("OK")
+// }
+
+// pub async fn apagar_projeto(
+//     meudata: web::Data<Arc<BancoDeDados>>,
+//     recebido: web::Json<Projeto>,
+// ) -> impl Responder {
+//     let resposta = recebido.into_inner();
+//     let nome = resposta.nome;
+
+//     futures::executor::block_on(Projetos::delete(&meudata, nome));
+
+//     HttpResponse::Ok()
+//         .content_type("application/json; charset=utf-8")
+//         .body("OK")
 // }
