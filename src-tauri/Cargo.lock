@@ -5323,6 +5323,7 @@ dependencies = [
  "directories-next",
  "duckdb",
  "futures",
+ "lazy_static",
  "local-ip-address",
  "serde",
  "serde_json",

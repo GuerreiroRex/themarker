@@ -1,7 +1,7 @@
-mod projetos;
+mod aprojetos;
 
 
-pub use projetos::*;
+pub use aprojetos::*;
 use actix_web::{HttpResponse, Responder};
 
 pub async fn index() -> impl Responder {

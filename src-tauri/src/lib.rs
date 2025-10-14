@@ -11,6 +11,7 @@ pub mod servidor;
 pub mod tabelas;
 pub mod rotas;
 pub mod meudb;
+pub mod projetos;
 
 #[tauri::command]
 fn greet(name: &str) -> String {

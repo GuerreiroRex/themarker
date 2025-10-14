@@ -3,19 +3,18 @@ use crate::meudb::BancoDeDados;
 use crate::rotas;
 
 use actix_web::{web, App, HttpServer};
-// use local_ip_address::local_ip;
-// use std::collections::HashMap;
+use std::collections::HashMap;
 use std::net::TcpListener;
 use std::sync::Arc;
 
 use std::thread;
 
-// use lazy_static::lazy_static;
-// use std::sync::Mutex;
+use lazy_static::lazy_static;
+use std::sync::Mutex;
 
-// lazy_static! {
-//     pub static ref DICIONARIO: Mutex<HashMap<String, Arc<Servidor>>> = Mutex::new(HashMap::new());
-// }
+lazy_static! {
+    pub static ref DICIONARIO: Mutex<HashMap<String, Arc<Servidor>>> = Mutex::new(HashMap::new());
+}
 
 pub struct Servidor {
     modelo: Modelo,

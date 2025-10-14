@@ -15,6 +15,8 @@ impl BancoDeDados {
 
         let conn = Connection::open_in_memory().expect("Falha ao criar o banco de dados.");
 
+        println!( "ATTACH '{}' AS base (ENCRYPTION_KEY '{}');", caminho.display(), chave );
+
         let mut encriptografar_db = conn
             .prepare(
                 format!(
