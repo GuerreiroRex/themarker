@@ -1,86 +1,85 @@
+// App.jsx
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-// import { fetch } from '@tauri-apps/plugin-http';
-import { fetch } from '@tauri-apps/plugin-http';
-
-
-
+import { FaFolderOpen, FaCloudUploadAlt, FaCog, FaRocket } from "react-icons/fa";
+import "./App.css";
 import ModalHospedarProjeto from "../../componentes/modalHospedarProjeto/App.jsx";
 import ModalCarregarProjeto from "../../componentes/modalCarregarProjeto/App.jsx";
 
 function Menu() {
   const [modalVisivel, setModalVisivel] = useState(null);
 
-  const [servidor, setServidor] = useState(null);
-  const [listaProjetos, setListaProjetos] = useState([]);
-
   useEffect(() => {
-    invoke("conseguir_servidor", { nome: "sistema" })
-      .then((resposta) => sessionStorage.setItem("servidor", resposta))
-      .catch((erro) => console.error("Erro ao chamar backend:", erro));
+    let mounted = true;
+    invoke("api_projeto_ler_todos")
+      .then((res) => {
+        if (!mounted) return;
+      })
+      .catch((err) => {
+        console.error("Erro ao carregar projetos:", err);
+      });
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-
-  
-
-  useEffect(
-    () => {
-
-      if (servidor) {
-        console.log("Iniciado com o servidor: ", `http://${servidor}/`)
-
-        fetch(`http://${servidor}/projetos`, {
-          method: 'GET',
-        }).then((resp) => {
-          /* console.log(resp);
-          console.log(resp.json()); */
-          let abc = resp.json().then(
-            (conteudo) => {
-              console.log("abc: ", conteudo)
-              setListaProjetos(conteudo);
-              console.log(listaProjetos);
-            }
-          );
-
-        })
-      }
-
-
-    }, [servidor]
-  );
-
   return (
-    <>
-      {
-        (modalVisivel == "novo") &&
-        <ModalHospedarProjeto fecharmodal={() => { setModalVisivel(null) }} />
-      }
-      {
-        (modalVisivel == "carregar") &&
-        <ModalCarregarProjeto fecharmodal={() => { setModalVisivel(null) }} />
-      }
-      <p className="titulo">Teste Menu</p>
-      <p>Teste Menu</p>
-
-      <button onClick={() => { setModalVisivel("novo") }}>Novo Projeto </button>
-      <button onClick={() => { setModalVisivel("carregar") }}>Carregar Projeto </button>
-      <button>Configurações </button>
-
-      <div>
-        <h1>Servidor atual:</h1>
-        <p>{`http://${servidor}/` || "Carregando..."}</p>
+    <div className="menu-container">
+      {/* Logo Section */}
+      <div className="logo-section">
+        <div className="logo-container">
+          <img src="themarker_logo.svg" alt="The Marker Logo" className="logo" />
+          <div className="logo-glow"></div>
+        </div>
+        <h1 className="app-title">
+          <span className="app-title-main">THE MARKER</span>
+          <span className="app-title-sub">Ferramenta de Marcação de Imagem</span>
+        </h1>
       </div>
 
-      <>{listaProjetos.length > 0 ?
-        listaProjetos.map(
-          (valor, indice) => {
-            return <p key={indice}>{valor.nome}</p>
-          }
-        )
-        : "Carregando 2..."}</>
+      {/* Botões Section */}
+      <div className="botoes-section">
+        <div className="botoes-container">
+          <button 
+            className="botao-menu primary" 
+            onClick={() => setModalVisivel("novo")}
+          >
+            <div className="botao-content">
+              <FaFolderOpen className="icone-botao" />
+              <span>Acessar Projeto</span>
+            </div>
+            <FaRocket className="botao-arrow" />
+          </button>
 
+          <button 
+            className="botao-menu secondary" 
+            onClick={() => setModalVisivel("carregar")}
+          >
+            <div className="botao-content">
+              <FaCloudUploadAlt className="icone-botao" />
+              <span>Hospedar Projeto</span>
+            </div>
+            <FaRocket className="botao-arrow" />
+          </button>
 
-    </>
+          <button className="botao-menu tertiary">
+            <div className="botao-content">
+              <FaCog className="icone-botao" />
+              <span>Configurações</span>
+            </div>
+            <FaRocket className="botao-arrow" />
+          </button>
+        </div>
+      </div>
+
+      {/* Modais */}
+      {modalVisivel === "novo" && (
+        <ModalHospedarProjeto fecharmodal={() => setModalVisivel(null)} />
+      )}
+      {modalVisivel === "carregar" && (
+        <ModalCarregarProjeto fecharmodal={() => setModalVisivel(null)} />
+      )}
+    </div>
   );
 }
 

@@ -11,12 +11,13 @@ pub mod servidor;
 pub mod tabelas;
 pub mod rotas;
 pub mod meudb;
-pub mod projetos;
+pub mod db_projetos;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
+
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -59,7 +60,11 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             greet,
-            // inicializador::conseguir_servidor
+            db_projetos::api_projeto_criar,
+            db_projetos::api_projeto_ler,
+            db_projetos::api_projeto_atualizar,
+            db_projetos::api_projeto_apagar,
+            db_projetos::api_projeto_ler_todos,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

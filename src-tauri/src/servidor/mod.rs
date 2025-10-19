@@ -15,7 +15,6 @@ use std::sync::Mutex;
 lazy_static! {
     pub static ref DICIONARIO: Mutex<HashMap<String, Arc<Servidor>>> = Mutex::new(HashMap::new());
 }
-
 pub struct Servidor {
     modelo: Modelo,
     ip: String,

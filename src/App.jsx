@@ -15,7 +15,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Menu />} />
         <Route path="/settings" element={<Config />} />
-        <Route path="/principal" element={<Principal />} />
+        <Route path="/principal/:id" element={<Principal />} />
       </Routes>
     </Router>
   );

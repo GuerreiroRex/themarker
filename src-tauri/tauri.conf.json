@@ -12,10 +12,12 @@
   "app": {
     "windows": [
       {
-        "title": "themarker",
+        "title": "The Marker",
         "width": 800,
         "height": 600,
-        "visible": false
+        "visible": false,
+        "resizable": true,
+        "maximized": true
       }
     ],
     "security": {
