@@ -13,7 +13,7 @@ use lazy_static::lazy_static;
 use std::sync::Mutex;
 
 lazy_static! {
-    pub static ref DICIONARIO: Mutex<HashMap<String, Arc<Servidor>>> = Mutex::new(HashMap::new());
+    pub static ref SERVIDORES: Mutex<HashMap<String, Arc<Servidor>>> = Mutex::new(HashMap::new());
 }
 pub struct Servidor {
     modelo: Modelo,

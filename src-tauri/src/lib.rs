@@ -12,6 +12,7 @@ pub mod tabelas;
 pub mod rotas;
 pub mod meudb;
 pub mod db_projetos;
+pub mod mordomo;
 
 #[tauri::command]
 fn greet(name: &str) -> String {

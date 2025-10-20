@@ -1,5 +1,6 @@
+// App.js
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Stage, Layer, Line } from 'react-konva';
+import { Stage, Layer, Line, Image as KonvaImage } from 'react-konva';
 import Shape from './components/Shape';
 import CurrentShape from './components/CurrentShape';
 import Header from './components/Header';
@@ -38,6 +39,25 @@ const App = () => {
     width: window.innerWidth, 
     height: window.innerHeight - 80 
   });
+
+  // Estado para armazenar a imagem do gato carregada
+  const [catImage, setCatImage] = useState(null);
+
+  // Efeito para carregar a imagem do gato (executa uma vez)
+  useEffect(() => {
+    const img = new window.Image();
+    img.src = '/gato.jpg'; // coloque gato.jpg em public/ ou altere para import se preferir
+    img.onload = () => setCatImage(img);
+    img.onerror = (err) => {
+      // opcional: log de erro se a imagem não carregar
+      console.error('Erro ao carregar /gato.jpg', err);
+    };
+
+    return () => {
+      // limpa referência (opcional)
+      // setCatImage(null);
+    };
+  }, []);
 
   // Efeito para atualizar o tamanho do stage quando a janela é redimensionada
   useEffect(() => {
@@ -320,8 +340,19 @@ const App = () => {
         {renderGrid()}
       </Layer>
       
-      {/* Layer principal com formas */}
+      {/* Layer principal com formas e a imagem do gato */}
       <Layer>
+        {/* imagem posicionada nas coordenadas do mundo 0,0 */}
+        {catImage && (
+          <KonvaImage
+            image={catImage}
+            x={0}
+            y={0}
+            listening={false} // não intercepta eventos
+            perfectDrawEnabled={false}
+          />
+        )}
+
         {/* Renderiza todas as formas existentes */}
         {shapes.map(shape => (
           <Shape
@@ -350,7 +381,7 @@ const App = () => {
   ), [
     stageSize, scale, stagePos, isDraggingPoint, shapes, currentPoints, 
     mousePos, isDrawing, handleStageClick, handleWheel, renderGrid, 
-    handleStageDragEnd
+    handleStageDragEnd, catImage
   ]);
 
   return (
