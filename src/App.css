@@ -10,3 +10,8 @@ body {
   font-size: 16pt;
   color: #ffc74b;
 }
+
+/* Adicione esta classe para elementos que permitem clique direito */
+.allow-right-click {
+  /* Estilo vazio - apenas para identificação */
+}

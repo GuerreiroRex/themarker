@@ -1,98 +1,266 @@
-import { useState } from "react";
-import { useNavigate } from 'react-router-dom';
-import { fetch } from '@tauri-apps/plugin-http';
-
-
+import React, { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+import { useNavigate } from "react-router-dom";
 import "./style.css";
 
+function ModalHospedarProjeto({ fecharmodal }) {
+  const [projetos, setProjetos] = useState([]);
+  const [novoNome, setNovoNome] = useState("");
+  const [novaChave, setNovaChave] = useState("");
+  const [novoAberto, setNovoAberto] = useState(true);
+  const [novoCripto, setNovoCripto] = useState(false);
 
-// Componente do Item da Galeria
-const ItemGaleria = ({ item }) => {
-  return (
-    <div style={estilos.item}>
-      <h3 style={estilos.titulo}>{item.nome}</h3>
-      {/* Adicione mais campos aqui se necessário */}
-    </div>
-  );
-};
+  const [editingId, setEditingId] = useState(null);
+  const [editingNome, setEditingNome] = useState("");
+  const [projetoAbrindo, setProjetoAbrindo] = useState(null);
+  const [chaveAbertura, setChaveAbertura] = useState("");
 
-// Componente da Galeria
-const GaleriaVertical = ({ itens }) => {
-  // Converte a string JSON para objeto JavaScript, se necessário
-  const dados = typeof itens === 'string' ? JSON.parse(itens) : itens;
+  const navigate = useNavigate();
 
-  return (
-    <div style={estilos.galeria}>
-      {dados.map((item, index) => (
-        <ItemGaleria key={index} item={item} />
-      ))}
-    </div>
-  );
-};
-
-// Estilos
-const estilos = {
-  galeria: {
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    padding: '20px',
-    fontFamily: 'Arial, sans-serif'
-  },
-  item: {
-    width: '100%',
-    minHeight: '80px',
-    backgroundColor: '#f8f9fa',
-    border: '1px solid #dee2e6',
-    borderRadius: '8px',
-    marginBottom: '15px',
-    padding: '20px',
-    boxSizing: 'border-box',
-    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-    display: 'flex',
-    alignItems: 'center'
-  },
-  titulo: {
-    margin: 0,
-    color: '#333',
-    fontSize: '18px'
-  }
-};
-
-function ModalNovoProjeto({ fecharmodal }) {
-  const navegar = useNavigate();
-
-  const servidor = sessionStorage.getItem("servidor");
-  const [listaProjetos, setListaProjetos] = useState([]);
-
-  fetch(`http://${servidor}/projetos`, {
-    method: 'GET',
-  }).then((resp) => {
-    /* console.log(resp);
-    console.log(resp.json()); */
-    let abc = resp.json().then(
-      (conteudo) => {
-        console.log("abc: ", conteudo)
-        setListaProjetos(conteudo);
-        console.log(listaProjetos);
+  useEffect(() => {
+    let mounted = true;
+    async function carregar() {
+      try {
+        const res = await invoke("api_projeto_ler_todos");
+        if (!mounted) return;
+        setProjetos(Array.isArray(res) ? res : []);
+      } catch (err) {
+        console.error("Erro ao carregar projetos:", err);
+        if (mounted) setProjetos([]);
       }
-    );
+    }
+    carregar();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
-  })
+  async function criarProjeto(e) {
+    e.preventDefault();
+    if (!novoNome.trim()) return;
+    if (novoCripto && !novaChave.trim()) {
+      alert("Por favor, insira uma chave para projetos com criptografia");
+      return;
+    }
+    try {
+      await invoke("api_projeto_criar", {
+        nome: novoNome,
+        aberto: novoAberto,
+        criptografia: novoCripto,
+        chave: novaChave,
+      });
+      setNovoNome("");
+      setNovaChave("");
+      setNovoCripto(false);
+      setNovoAberto(true);
+      await recarregar();
+    } catch (err) {
+      console.error("Erro ao criar projeto:", err);
+    }
+  }
 
-  return <>
-    <div id="modalNovoProjeto">
-      <button onClick={fecharmodal}> Fechar </button>
+  async function iniciarEdicao(proj) {
+    setEditingId(proj.id);
+    setEditingNome(proj.nome);
+    setProjetoAbrindo(null); // Fecha qualquer abertura em andamento
+  }
 
-      <p>{JSON.stringify(listaProjetos)}</p>
-      <GaleriaVertical itens={listaProjetos} />
+  async function salvarEdicao() {
+    if (!editingNome.trim() || !editingId) return;
+    try {
+      await invoke("api_projeto_atualizar", {
+        id: editingId,
+        novo_nome: editingNome,
+      });
+      setEditingId(null);
+      setEditingNome("");
+      await recarregar();
+    } catch (err) {
+      console.error("Erro ao atualizar projeto:", err);
+    }
+  }
 
+  async function apagarProjeto(id, nome) {
+    if (!window.confirm(`Apagar projeto "${nome}"?`)) return;
+    try {
+      await invoke("api_projeto_apagar", { id });
+      await recarregar();
+    } catch (err) {
+      console.error("Erro ao apagar projeto:", err);
+    }
+  }
 
-      <button onClick={() => { navegar('/principal') }}> Abrir </button>
+  async function recarregar() {
+    try {
+      const res = await invoke("api_projeto_ler_todos");
+      setProjetos(Array.isArray(res) ? res : []);
+    } catch (err) {
+      console.error("Erro ao recarregar projetos:", err);
+      setProjetos([]);
+    }
+  }
+
+  function iniciarAbertura(projeto) {
+    setProjetoAbrindo(projeto);
+    setChaveAbertura("");
+  }
+
+  function cancelarAbertura() {
+    setProjetoAbrindo(null);
+    setChaveAbertura("");
+  }
+
+  function confirmarAbertura() {
+    if (!chaveAbertura.trim()) {
+      alert("Por favor, insira a chave para abrir o projeto");
+      return;
+    }
+    
+    if (typeof fecharmodal === "function") fecharmodal();
+    navigate(`/principal/${projetoAbrindo.id}`, { state: { chave: chaveAbertura } });
+  }
+
+  function abrirProjeto(projeto) {
+    if (!projeto.criptografia) {
+      if (typeof fecharmodal === "function") fecharmodal();
+      navigate(`/principal/${projeto.id}`);
+    } else {
+      iniciarAbertura(projeto);
+    }
+  }
+
+  return (
+    <div id="modalCarregarProjeto" className="modal">
+      <div className="modal-content">
+        <button type="button" className="close-btn" onClick={fecharmodal}>
+          Fechar
+        </button>
+
+        <h3>Projetos</h3>
+
+        {/* Formulário simples para criar */}
+        <form onSubmit={criarProjeto} className="criar-form">
+          <input
+            placeholder="Nome do projeto"
+            value={novoNome}
+            onChange={(e) => setNovoNome(e.target.value)}
+          />
+          <label>
+            <input
+              type="checkbox"
+              checked={novoAberto}
+              onChange={(e) => setNovoAberto(e.target.checked)}
+            />
+            Aberto
+          </label>
+          <label>
+            <input
+              type="checkbox"
+              checked={novoCripto}
+              onChange={(e) => setNovoCripto(e.target.checked)}
+            />
+            Criptografia
+          </label>
+          {novoCripto && (
+            <input
+              type="password"
+              placeholder="Chave de criptografia"
+              value={novaChave}
+              onChange={(e) => setNovaChave(e.target.value)}
+            />
+          )}
+          <button type="submit">Criar</button>
+        </form>
+
+        <hr />
+
+        {/* Lista */}
+        {projetos.length === 0 ? (
+          <p>Nenhum projeto encontrado.</p>
+        ) : (
+          <ul className="lista-projetos">
+            {projetos.map((p) => (
+              <li key={p.id} className="projeto-item">
+                {/* edição inline */}
+                {editingId === p.id ? (
+                  <>
+                    <input
+                      value={editingNome}
+                      onChange={(e) => setEditingNome(e.target.value)}
+                    />
+                    <button type="button" onClick={salvarEdicao}>
+                      Salvar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(null);
+                        setEditingNome("");
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="projeto-info">
+                      <span className="proj-nome">{p.nome}</span>
+                      <span className="proj-meta">
+                        {p.modelo ? `— ${p.modelo}` : ""}
+                        {p.criptografia ? " 🔒" : ""}
+                      </span>
+                      <div className="proj-actions">
+                        <button type="button" onClick={() => abrirProjeto(p)}>
+                          Abrir
+                        </button>
+                        <button type="button" onClick={() => iniciarEdicao(p)}>
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => apagarProjeto(p.id, p.nome)}
+                        >
+                          Apagar
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Seção de inserção de chave - visível apenas quando abrindo este projeto criptografado */}
+                    {projetoAbrindo && projetoAbrindo.id === p.id && p.criptografia && (
+                      <div className="chave-abertura-container">
+                        <div className="chave-abertura">
+                          <p>Este projeto está criptografado. Insira a chave para abrir:</p>
+                          <input
+                            type="password"
+                            placeholder="Digite a chave de criptografia"
+                            value={chaveAbertura}
+                            onChange={(e) => setChaveAbertura(e.target.value)}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                confirmarAbertura();
+                              }
+                            }}
+                          />
+                          <div className="chave-actions">
+                            <button type="button" onClick={confirmarAbertura}>
+                              Confirmar
+                            </button>
+                            <button type="button" onClick={cancelarAbertura}>
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
-  </>
+  );
 }
 
-export default ModalNovoProjeto;
+export default ModalHospedarProjeto;

@@ -40,3 +40,8 @@ html, body {
 .stage-container canvas {
   display: block;
 }
+
+.stage-container.allow-right-click {
+  /* Garante que o stage container permita clique direito */
+  cursor: default;
+}

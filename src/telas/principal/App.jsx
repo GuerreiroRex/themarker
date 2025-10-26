@@ -1,4 +1,3 @@
-// App.js
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Stage, Layer, Line, Image as KonvaImage } from 'react-konva';
 import Shape from './components/Shape';
@@ -6,77 +5,56 @@ import CurrentShape from './components/CurrentShape';
 import Header from './components/Header';
 import './App.css';
 
-// Definição dos modos de desenho disponíveis
 const MODES = {
   SQUARE: 'square',
   POLYGON: 'polygon'
 };
 
 const App = () => {
-  // Estado para controlar o modo de desenho atual
   const [mode, setMode] = useState(MODES.SQUARE);
-  // Estado para armazenar todas as formas desenhadas
   const [shapes, setShapes] = useState([]);
-  // Estado para os pontos da forma que está sendo desenhada atualmente
   const [currentPoints, setCurrentPoints] = useState([]);
-  // Estado para controlar se está no modo de desenho
   const [isDrawing, setIsDrawing] = useState(false);
-  // Estado para a posição atual do mouse
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  // Estado para o nível de zoom/scale
   const [scale, setScale] = useState(1);
-  // Estado para a posição do stage (pan)
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
-  // Estado para controlar se um ponto está sendo arrastado
   const [isDraggingPoint, setIsDraggingPoint] = useState(false);
-
-  // Refs para acessar o stage e container diretamente
-  const stageRef = useRef();
-  const containerRef = useRef();
-
-  // Estado para o tamanho do stage, ajustado dinamicamente
-  const [stageSize, setStageSize] = useState({ 
-    width: window.innerWidth, 
-    height: window.innerHeight - 80 
+  const [contextMenu, setContextMenu] = useState({
+    visible: false,
+    x: 0,
+    y: 0,
+    shapeId: null,
+    pointIndex: null
   });
 
-  // Estado para armazenar a imagem do gato carregada
+  const stageRef = useRef();
+  const containerRef = useRef();
+  const [stageSize, setStageSize] = useState({ width: window.innerWidth, height: window.innerHeight - 80 });
   const [catImage, setCatImage] = useState(null);
 
-  // Efeito para carregar a imagem do gato (executa uma vez)
   useEffect(() => {
     const img = new window.Image();
-    img.src = '/gato.jpg'; // coloque gato.jpg em public/ ou altere para import se preferir
+    img.src = '/gato.jpg';
     img.onload = () => setCatImage(img);
     img.onerror = (err) => {
-      // opcional: log de erro se a imagem não carregar
       console.error('Erro ao carregar /gato.jpg', err);
-    };
-
-    return () => {
-      // limpa referência (opcional)
-      // setCatImage(null);
     };
   }, []);
 
-  // Efeito para atualizar o tamanho do stage quando a janela é redimensionada
   useEffect(() => {
     const updateStageSize = () => {
       if (containerRef.current) {
-        setStageSize({ 
-          width: containerRef.current.offsetWidth, 
-          height: containerRef.current.offsetHeight 
+        setStageSize({
+          width: containerRef.current.offsetWidth,
+          height: containerRef.current.offsetHeight
         });
       }
     };
-
     updateStageSize();
     window.addEventListener('resize', updateStageSize);
-
     return () => window.removeEventListener('resize', updateStageSize);
   }, []);
 
-  // Efeito para rastrear a posição do mouse no stage
   useEffect(() => {
     const handleMouseMove = (e) => {
       if (stageRef.current) {
@@ -84,39 +62,46 @@ const App = () => {
         if (pos) setMousePos(pos);
       }
     };
-
     const stage = stageRef.current;
     if (stage) stage.on('mousemove', handleMouseMove);
-
     return () => {
       if (stage) stage.off('mousemove', handleMouseMove);
     };
   }, []);
 
-  // Função para renderizar o grid de fundo (memoizada para performance)
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      // Fecha o menu se o clique foi fora dele
+      if (contextMenu.visible && !e.target.closest('.context-menu')) {
+        setContextMenu({ visible: false, x: 0, y: 0, shapeId: null, pointIndex: null });
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [contextMenu.visible]);
+
   const renderGrid = useCallback(() => {
     const gridSize = 50;
     const gridLines = [];
     
-    // Calcula a área visível atual considerando zoom e pan
     const visibleWidth = stageSize.width / scale;
     const visibleHeight = stageSize.height / scale;
     const visibleWorldCenterX = -stagePos.x / scale;
     const visibleWorldCenterY = -stagePos.y / scale;
-    
-    // Expande a área visível para 2x em cada direção para grid contínuo
+
     const visibleWorldLeft = visibleWorldCenterX - (2 * visibleWidth);
     const visibleWorldTop = visibleWorldCenterY - (2 * visibleHeight);
     const visibleWorldRight = visibleWorldCenterX + (2 * visibleWidth);
     const visibleWorldBottom = visibleWorldCenterY + (2 * visibleHeight);
 
-    // Calcula os limites do grid baseado na área visível expandida
     const startX = Math.floor(visibleWorldLeft / gridSize) * gridSize;
     const endX = Math.ceil(visibleWorldRight / gridSize) * gridSize;
     const startY = Math.floor(visibleWorldTop / gridSize) * gridSize;
     const endY = Math.ceil(visibleWorldBottom / gridSize) * gridSize;
 
-    // Linhas verticais do grid
     for (let x = startX; x <= endX; x += gridSize) {
       gridLines.push(
         <Line
@@ -130,7 +115,6 @@ const App = () => {
       );
     }
 
-    // Linhas horizontais do grid
     for (let y = startY; y <= endY; y += gridSize) {
       gridLines.push(
         <Line
@@ -143,11 +127,9 @@ const App = () => {
         />
       );
     }
-
     return gridLines;
   }, [stageSize, scale, stagePos]);
 
-  // Manipula o zoom com a roda do mouse
   const handleWheel = (e) => {
     e.evt.preventDefault();
     const stage = stageRef.current;
@@ -158,17 +140,13 @@ const App = () => {
 
     const oldScale = scale;
     const newScale = e.evt.deltaY > 0 ? scale * 0.9 : scale * 1.1;
-    
-    // Limita o zoom entre 1% e 10000%
     const clampedScale = Math.min(Math.max(newScale, 0.01), 100);
 
-    // Calcula a posição do mouse relativa ao mundo
     const mousePointTo = {
       x: (pointer.x - stagePos.x) / oldScale,
       y: (pointer.y - stagePos.y) / oldScale,
     };
 
-    // Calcula nova posição para manter o zoom no ponto do mouse
     const newPos = {
       x: pointer.x - mousePointTo.x * clampedScale,
       y: pointer.y - mousePointTo.y * clampedScale,
@@ -178,69 +156,56 @@ const App = () => {
     setStagePos(newPos);
   };
 
-  // Manipula cliques no stage para desenhar formas
   const handleStageClick = (e) => {
-    // Ignora cliques se estiver arrastando um ponto
-    if (isDraggingPoint) return;
+    // VERIFICAÇÃO ADICIONADA: Só processa clique do botão esquerdo
+    if (e.evt.button !== 0) return;
     
-    // Só processa cliques diretos no stage ou quando não está desenhando
+    if (isDraggingPoint) return;
+
     if (e.target !== e.target.getStage() && !isDrawing) return;
 
     const stage = e.target.getStage();
     const pos = stage.getPointerPosition();
     if (!pos) return;
 
-    // Ajusta a posição considerando zoom e pan
     const adjustedPos = {
       x: (pos.x - stagePos.x) / scale,
       y: (pos.y - stagePos.y) / scale
     };
 
-    // Lógica para modo QUADRADO
     if (mode === MODES.SQUARE) {
       if (currentPoints.length === 0) {
-        // Primeiro clique: inicia o desenho
         setCurrentPoints([adjustedPos]);
         setIsDrawing(true);
       } else {
-        // Segundo clique: completa o quadrado
         const start = currentPoints[0];
         const end = adjustedPos;
-        
-        // Calcula os 4 pontos do quadrado
         const squarePoints = [
           { x: start.x, y: start.y },
           { x: end.x, y: start.y },
           { x: end.x, y: end.y },
           { x: start.x, y: end.y }
         ];
-
-        // Adiciona o quadrado à lista de formas
         setShapes(prevShapes => [...prevShapes, {
           type: 'square',
           points: squarePoints,
           id: `shape-${Date.now()}`,
           name: `Quadrado ${prevShapes.filter(s => s.type === 'square').length + 1}`
         }]);
-        
         setCurrentPoints([]);
         setIsDrawing(false);
       }
-    } 
-    // Lógica para modo POLÍGONO
-    else {
+    } else if (mode === MODES.POLYGON) {
       if (currentPoints.length === 0) {
-        // Primeiro clique: inicia o polígono
         setCurrentPoints([adjustedPos]);
         setIsDrawing(true);
       } else {
         const firstPoint = currentPoints[0];
         const distance = Math.sqrt(
-          Math.pow(adjustedPos.x - firstPoint.x, 2) + 
+          Math.pow(adjustedPos.x - firstPoint.x, 2) +
           Math.pow(adjustedPos.y - firstPoint.y, 2)
         );
 
-        // Verifica se clicou perto do primeiro ponto para fechar o polígono
         if (distance < 15 / scale && currentPoints.length >= 3) {
           setShapes(prevShapes => [...prevShapes, {
             type: 'polygon',
@@ -251,76 +216,114 @@ const App = () => {
           setCurrentPoints([]);
           setIsDrawing(false);
         } else {
-          // Adiciona novo ponto ao polígono
           setCurrentPoints([...currentPoints, adjustedPos]);
         }
       }
     }
   };
 
-  // Move uma forma inteira
-  const handleShapeDragMove = (shapeId, dx, dy) => {
-    setShapes(prevShapes => prevShapes.map(shape => 
-      shape.id === shapeId 
-        ? { 
-            ...shape, 
-            points: shape.points.map(p => ({ 
-              x: p.x + dx, 
-              y: p.y + dy 
-            })) 
-          } 
+  // Manipulador de contexto para o stage - só mostra menu em área vazia
+  const handleStageContextMenu = (e) => {
+    e.evt.preventDefault();
+    
+    const stage = e.target.getStage();
+    const pos = stage.getPointerPosition();
+    if (!pos) return;
+
+    // Só mostra o menu se o clique foi no stage (área vazia), não em uma figura/ponto
+    if (e.target === e.target.getStage()) {
+      setContextMenu({
+        visible: true,
+        x: pos.x,
+        y: pos.y,
+        shapeId: null,
+        pointIndex: null
+      });
+    }
+    // Se o clique foi em uma figura/ponto, o menu específico já foi aberto pelo componente Shape
+  };
+
+  // CORREÇÃO: Recebe diretamente os novos pontos
+  const handleShapeDragMove = (shapeId, newPoints) => {
+    setShapes(prevShapes => prevShapes.map(shape =>
+      shape.id === shapeId
+        ? { ...shape, points: newPoints }
         : shape
     ));
   };
 
-  // Move um ponto individual de uma forma
   const handlePointDragMove = (shapeId, pointIndex, newPos) => {
-    setShapes(prevShapes => prevShapes.map(shape => 
-      shape.id === shapeId 
-        ? { 
-            ...shape, 
-            points: shape.points.map((p, i) => 
-              i === pointIndex 
-                ? { x: newPos.x, y: newPos.y } 
-                : p
-            ) 
-          } 
+    setShapes(prevShapes => prevShapes.map(shape =>
+      shape.id === shapeId
+        ? {
+            ...shape,
+            points: shape.points.map((p, i) =>
+              i === pointIndex ? { x: newPos.x, y: newPos.y } : p
+            )
+          }
         : shape
     ));
   };
 
-  // Adiciona um novo ponto em uma linha existente
   const addPointOnLine = (shapeId, lineIndex, pos) => {
-    setShapes(prevShapes => prevShapes.map(shape => 
-      shape.id === shapeId 
-        ? { 
-            ...shape, 
+    setShapes(prevShapes => prevShapes.map(shape =>
+      shape.id === shapeId
+        ? {
+            ...shape,
             points: [
               ...shape.points.slice(0, lineIndex + 1),
               pos,
               ...shape.points.slice(lineIndex + 1)
-            ] 
-          } 
+            ]
+          }
         : shape
     ));
   };
 
-  // Reseta a visualização (zoom e posição)
+  const handleDeleteShape = (shapeId) => {
+    setShapes(prevShapes => prevShapes.filter(shape => shape.id !== shapeId));
+    setContextMenu({ visible: false, x: 0, y: 0, shapeId: null, pointIndex: null });
+  };
+
+  const handleDeletePoint = (shapeId, pointIndex) => {
+    setShapes(prevShapes => prevShapes.map(shape => {
+      if (shape.id !== shapeId) return shape;
+
+      const newPoints = shape.points.filter((_, index) => index !== pointIndex);
+      
+      const minPoints = shape.type === 'square' ? 4 : 3;
+      if (newPoints.length < minPoints) {
+        return null;
+      }
+      
+      return { ...shape, points: newPoints };
+    }).filter(Boolean));
+    setContextMenu({ visible: false, x: 0, y: 0, shapeId: null, pointIndex: null });
+  };
+
+  // Esta função é chamada pelos componentes Shape quando o contexto é acionado neles
+  const handleContextMenu = (shapeId, pointIndex = null, x, y) => {
+    setContextMenu({
+      visible: true,
+      x: x,
+      y: y,
+      shapeId: shapeId,
+      pointIndex: pointIndex
+    });
+  };
+
   const resetView = () => {
     setScale(1);
     setStagePos({ x: 0, y: 0 });
   };
 
-  // Atualiza a posição do stage após arrastar
   const handleStageDragEnd = (e) => {
     setStagePos(e.target.position());
   };
 
-  // Manipuladores para início e fim do arrasto de pontos
   const handlePointDragStart = () => setIsDraggingPoint(true);
   const handlePointDragEnd = () => setIsDraggingPoint(false);
 
-  // Stage memoizado para evitar re-render desnecessários
   const stageElement = useMemo(() => (
     <Stage
       width={stageSize.width}
@@ -334,26 +337,23 @@ const App = () => {
       ref={stageRef}
       draggable={!isDraggingPoint}
       onDragEnd={handleStageDragEnd}
+      onContextMenu={handleStageContextMenu}
     >
-      {/* Layer do grid (não interativo) */}
       <Layer listening={false}>
         {renderGrid()}
       </Layer>
-      
-      {/* Layer principal com formas e a imagem do gato */}
+
       <Layer>
-        {/* imagem posicionada nas coordenadas do mundo 0,0 */}
         {catImage && (
           <KonvaImage
             image={catImage}
             x={0}
             y={0}
-            listening={false} // não intercepta eventos
+            listening={false}
             perfectDrawEnabled={false}
           />
         )}
 
-        {/* Renderiza todas as formas existentes */}
         {shapes.map(shape => (
           <Shape
             key={shape.id}
@@ -361,13 +361,14 @@ const App = () => {
             onShapeDragMove={handleShapeDragMove}
             onPointDragMove={handlePointDragMove}
             onAddPointOnLine={addPointOnLine}
+            onContextMenu={handleContextMenu}
             onPointDragStart={handlePointDragStart}
             onPointDragEnd={handlePointDragEnd}
             scale={scale}
+            stagePos={stagePos}
           />
         ))}
-        
-        {/* Renderiza a forma que está sendo desenhada atualmente */}
+
         <CurrentShape
           mode={mode}
           currentPoints={currentPoints}
@@ -379,9 +380,8 @@ const App = () => {
       </Layer>
     </Stage>
   ), [
-    stageSize, scale, stagePos, isDraggingPoint, shapes, currentPoints, 
-    mousePos, isDrawing, handleStageClick, handleWheel, renderGrid, 
-    handleStageDragEnd, catImage
+    stageSize, scale, stagePos, isDraggingPoint, shapes, currentPoints,
+    mousePos, isDrawing, catImage, renderGrid
   ]);
 
   return (
@@ -395,12 +395,156 @@ const App = () => {
         scale={scale}
         resetView={resetView}
       />
-      
       <div className="app-content">
-        <div className="stage-container" ref={containerRef}>
+        <div className="stage-container allow-right-click" ref={containerRef}>
           {stageElement}
         </div>
+        
+        {contextMenu.visible && (
+          <div 
+            className="context-menu allow-right-click"
+            style={{
+              position: 'absolute',
+              left: contextMenu.x,
+              top: contextMenu.y,
+              zIndex: 1000
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="context-menu-content">
+              {/* Menu para pontos - opções específicas */}
+              {contextMenu.pointIndex !== null ? (
+                <>
+                  <button 
+                    onClick={() => handleDeletePoint(contextMenu.shapeId, contextMenu.pointIndex)}
+                    className="context-menu-item delete"
+                  >
+                    🗑️ Apagar Ponto
+                  </button>
+                  <button 
+                    onClick={() => handleDeleteShape(contextMenu.shapeId)}
+                    className="context-menu-item delete"
+                  >
+                    🗑️ Apagar Figura Inteira
+                  </button>
+                </>
+              ) : contextMenu.shapeId ? (
+                /* Menu para figuras (sem ponto específico) */
+                <button 
+                  onClick={() => handleDeleteShape(contextMenu.shapeId)}
+                  className="context-menu-item delete"
+                >
+                  🗑️ Apagar Figura
+                </button>
+              ) : (
+                /* Menu para área vazia */
+                <div className="context-menu-section">
+                  <div className="context-menu-title">Ações Gerais</div>
+                  <button 
+                    onClick={resetView}
+                    className="context-menu-item"
+                  >
+                    🔄 Resetar Visualização
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setCurrentPoints([]);
+                      setIsDrawing(false);
+                    }}
+                    className="context-menu-item"
+                  >
+                    ✋ Cancelar Desenho Atual
+                  </button>
+                </div>
+              )}
+              <button 
+                onClick={() => setContextMenu({ visible: false, x: 0, y: 0, shapeId: null, pointIndex: null })}
+                className="context-menu-item cancel"
+              >
+                ✕ Fechar
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      <style jsx>{`
+        .principal {
+          width: 100%;
+          height: 100vh;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .app-content {
+          flex: 1;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .stage-container {
+          width: 100%;
+          height: 100%;
+        }
+
+        .context-menu {
+          background: white;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          min-width: 200px;
+        }
+
+        .context-menu-content {
+          display: flex;
+          flex-direction: column;
+          padding: 4px;
+        }
+
+        .context-menu-section {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .context-menu-title {
+          padding: 6px 12px;
+          font-size: 12px;
+          color: #666;
+          font-weight: bold;
+          border-bottom: 1px solid #eee;
+          margin-bottom: 4px;
+        }
+
+        .context-menu-item {
+          padding: 8px 12px;
+          border: none;
+          background: none;
+          text-align: left;
+          cursor: pointer;
+          border-radius: 3px;
+          margin: 2px 0;
+          font-size: 14px;
+        }
+
+        .context-menu-item:hover {
+          background: #f0f0f0;
+        }
+
+        .context-menu-item.delete {
+          color: #e74c3c;
+        }
+
+        .context-menu-item.delete:hover {
+          background: #ffeaea;
+        }
+
+        .context-menu-item.cancel {
+          color: #666;
+          border-top: 1px solid #eee;
+          margin-top: 4px;
+          padding-top: 8px;
+        }
+      `}</style>
     </div>
   );
 };

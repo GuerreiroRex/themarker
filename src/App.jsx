@@ -1,15 +1,31 @@
-import { useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-
-import "./App.css";
-
+import { useEffect } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-
 import Menu from "./telas/menu/App.jsx";
 import Config from "./telas/configuracoes/App.jsx";
 import Principal from "./telas/principal/App.jsx";
+import "./App.css";
 
 function App() {
+  useEffect(() => {
+    const handleContextMenu = (e) => {
+      // Permite clique direito apenas em elementos com a classe allow-right-click
+      const allowRightClick = e.target.closest('.allow-right-click');
+      
+      if (!allowRightClick) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    };
+
+    // Adiciona o event listener com capture para pegar todos os eventos
+    document.addEventListener('contextmenu', handleContextMenu, { capture: true });
+
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu, { capture: true });
+    };
+  }, []);
+
   return (
     <Router>
       <Routes>

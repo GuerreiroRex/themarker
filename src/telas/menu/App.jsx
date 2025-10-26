@@ -3,8 +3,8 @@ import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FaFolderOpen, FaCloudUploadAlt, FaCog, FaRocket } from "react-icons/fa";
 import "./App.css";
+import ModalEntrarProjeto from "../../componentes/modalEntrarProjeto/App.jsx";
 import ModalHospedarProjeto from "../../componentes/modalHospedarProjeto/App.jsx";
-import ModalCarregarProjeto from "../../componentes/modalCarregarProjeto/App.jsx";
 
 function Menu() {
   const [modalVisivel, setModalVisivel] = useState(null);
@@ -74,10 +74,10 @@ function Menu() {
 
       {/* Modais */}
       {modalVisivel === "novo" && (
-        <ModalHospedarProjeto fecharmodal={() => setModalVisivel(null)} />
+        <ModalEntrarProjeto fecharmodal={() => setModalVisivel(null)} />
       )}
       {modalVisivel === "carregar" && (
-        <ModalCarregarProjeto fecharmodal={() => setModalVisivel(null)} />
+        <ModalHospedarProjeto fecharmodal={() => setModalVisivel(null)} />
       )}
     </div>
   );
