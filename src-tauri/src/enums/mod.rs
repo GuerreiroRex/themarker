@@ -22,7 +22,6 @@ impl Modelo {
     }
 }
 
-
 pub enum Criptografia {
     Ativa,
     Inativa,

@@ -1,17 +1,22 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Stage, Layer, Line, Image as KonvaImage } from 'react-konva';
+import { useParams } from 'react-router-dom';
+import { invoke } from '@tauri-apps/api/core';
 import Shape from './components/Shape';
 import CurrentShape from './components/CurrentShape';
 import Header from './components/Header';
 import './App.css';
 
+import { useLocation } from "react-router-dom";
+
 const MODES = {
+  SELECTION: 'selection',
   SQUARE: 'square',
-  POLYGON: 'polygon'
+  POLYGON: 'polygon',
 };
 
-const App = () => {
-  const [mode, setMode] = useState(MODES.SQUARE);
+const App = ({ id }) => {
+  const [mode, setMode] = useState(MODES.SELECTION);
   const [shapes, setShapes] = useState([]);
   const [currentPoints, setCurrentPoints] = useState([]);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -30,17 +35,59 @@ const App = () => {
   const stageRef = useRef();
   const containerRef = useRef();
   const [stageSize, setStageSize] = useState({ width: window.innerWidth, height: window.innerHeight - 80 });
-  const [catImage, setCatImage] = useState(null);
+  const [currentImage, setCurrentImage] = useState(null);
 
+  // Efeito para carregar a imagem padrão do gato
   useEffect(() => {
     const img = new window.Image();
     img.src = '/gato.jpg';
-    img.onload = () => setCatImage(img);
+    img.onload = () => setCurrentImage(img);
     img.onerror = (err) => {
       console.error('Erro ao carregar /gato.jpg', err);
     };
   }, []);
 
+  const location = useLocation();
+
+  // Função para lidar com a seleção de imagem do Header
+  const handleImageSelect = useCallback((selectedImage) => {
+    if (selectedImage && selectedImage.base64) {
+      const img = new window.Image();
+      img.onload = () => {
+        setCurrentImage(img);
+        // Resetar a visualização quando uma nova imagem é carregada
+        setScale(1);
+        setStagePos({ x: 0, y: 0 });
+        setShapes([]); // Opcional: limpar as formas ao mudar de imagem
+      };
+      img.src = `data:image/png;base64,${selectedImage.base64}`;
+      console.log('Imagem selecionada:', selectedImage.caminho);
+    }
+  }, []);
+
+  // Efeito para invocar a função Rust quando o componente monta
+  useEffect(() => {
+    const initializeImage = async () => {
+      console.log("Inicializando imagem com ID:", id);
+
+      try {
+        if (id) {
+          await invoke('api_imagem_start', { nome: id });
+          console.log(`Função api_imagem_start invocada com projeto: ${id}`);
+        } else {
+          console.warn('ID do projeto não encontrado na URL');
+        }
+      } catch (error) {
+        console.error('Erro ao invocar api_imagem_start:', error);
+      }
+    };
+
+    console.log("Efeito de inicialização disparado para ID:", id);
+    initializeImage();
+
+    }, [location.pathname, id]);
+
+  // Restante dos useEffects existentes...
   useEffect(() => {
     const updateStageSize = () => {
       if (containerRef.current) {
@@ -71,7 +118,6 @@ const App = () => {
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      // Fecha o menu se o clique foi fora dele
       if (contextMenu.visible && !e.target.closest('.context-menu')) {
         setContextMenu({ visible: false, x: 0, y: 0, shapeId: null, pointIndex: null });
       }
@@ -86,7 +132,7 @@ const App = () => {
   const renderGrid = useCallback(() => {
     const gridSize = 50;
     const gridLines = [];
-    
+
     const visibleWidth = stageSize.width / scale;
     const visibleHeight = stageSize.height / scale;
     const visibleWorldCenterX = -stagePos.x / scale;
@@ -157,9 +203,8 @@ const App = () => {
   };
 
   const handleStageClick = (e) => {
-    // VERIFICAÇÃO ADICIONADA: Só processa clique do botão esquerdo
     if (e.evt.button !== 0) return;
-    
+
     if (isDraggingPoint) return;
 
     if (e.target !== e.target.getStage() && !isDrawing) return;
@@ -222,15 +267,13 @@ const App = () => {
     }
   };
 
-  // Manipulador de contexto para o stage - só mostra menu em área vazia
   const handleStageContextMenu = (e) => {
     e.evt.preventDefault();
-    
+
     const stage = e.target.getStage();
     const pos = stage.getPointerPosition();
     if (!pos) return;
 
-    // Só mostra o menu se o clique foi no stage (área vazia), não em uma figura/ponto
     if (e.target === e.target.getStage()) {
       setContextMenu({
         visible: true,
@@ -240,10 +283,8 @@ const App = () => {
         pointIndex: null
       });
     }
-    // Se o clique foi em uma figura/ponto, o menu específico já foi aberto pelo componente Shape
   };
 
-  // CORREÇÃO: Recebe diretamente os novos pontos
   const handleShapeDragMove = (shapeId, newPoints) => {
     setShapes(prevShapes => prevShapes.map(shape =>
       shape.id === shapeId
@@ -256,11 +297,11 @@ const App = () => {
     setShapes(prevShapes => prevShapes.map(shape =>
       shape.id === shapeId
         ? {
-            ...shape,
-            points: shape.points.map((p, i) =>
-              i === pointIndex ? { x: newPos.x, y: newPos.y } : p
-            )
-          }
+          ...shape,
+          points: shape.points.map((p, i) =>
+            i === pointIndex ? { x: newPos.x, y: newPos.y } : p
+          )
+        }
         : shape
     ));
   };
@@ -269,13 +310,13 @@ const App = () => {
     setShapes(prevShapes => prevShapes.map(shape =>
       shape.id === shapeId
         ? {
-            ...shape,
-            points: [
-              ...shape.points.slice(0, lineIndex + 1),
-              pos,
-              ...shape.points.slice(lineIndex + 1)
-            ]
-          }
+          ...shape,
+          points: [
+            ...shape.points.slice(0, lineIndex + 1),
+            pos,
+            ...shape.points.slice(lineIndex + 1)
+          ]
+        }
         : shape
     ));
   };
@@ -290,18 +331,17 @@ const App = () => {
       if (shape.id !== shapeId) return shape;
 
       const newPoints = shape.points.filter((_, index) => index !== pointIndex);
-      
+
       const minPoints = shape.type === 'square' ? 4 : 3;
       if (newPoints.length < minPoints) {
         return null;
       }
-      
+
       return { ...shape, points: newPoints };
     }).filter(Boolean));
     setContextMenu({ visible: false, x: 0, y: 0, shapeId: null, pointIndex: null });
   };
 
-  // Esta função é chamada pelos componentes Shape quando o contexto é acionado neles
   const handleContextMenu = (shapeId, pointIndex = null, x, y) => {
     setContextMenu({
       visible: true,
@@ -344,9 +384,9 @@ const App = () => {
       </Layer>
 
       <Layer>
-        {catImage && (
+        {currentImage && (
           <KonvaImage
-            image={catImage}
+            image={currentImage}
             x={0}
             y={0}
             listening={false}
@@ -381,7 +421,7 @@ const App = () => {
     </Stage>
   ), [
     stageSize, scale, stagePos, isDraggingPoint, shapes, currentPoints,
-    mousePos, isDrawing, catImage, renderGrid
+    mousePos, isDrawing, currentImage, renderGrid
   ]);
 
   return (
@@ -394,14 +434,15 @@ const App = () => {
         setCurrentPoints={setCurrentPoints}
         scale={scale}
         resetView={resetView}
+        onImageSelect={handleImageSelect}
       />
       <div className="app-content">
         <div className="stage-container allow-right-click" ref={containerRef}>
           {stageElement}
         </div>
-        
+
         {contextMenu.visible && (
-          <div 
+          <div
             className="context-menu allow-right-click"
             style={{
               position: 'absolute',
@@ -412,16 +453,15 @@ const App = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="context-menu-content">
-              {/* Menu para pontos - opções específicas */}
               {contextMenu.pointIndex !== null ? (
                 <>
-                  <button 
+                  <button
                     onClick={() => handleDeletePoint(contextMenu.shapeId, contextMenu.pointIndex)}
                     className="context-menu-item delete"
                   >
                     🗑️ Apagar Ponto
                   </button>
-                  <button 
+                  <button
                     onClick={() => handleDeleteShape(contextMenu.shapeId)}
                     className="context-menu-item delete"
                   >
@@ -429,24 +469,22 @@ const App = () => {
                   </button>
                 </>
               ) : contextMenu.shapeId ? (
-                /* Menu para figuras (sem ponto específico) */
-                <button 
+                <button
                   onClick={() => handleDeleteShape(contextMenu.shapeId)}
                   className="context-menu-item delete"
                 >
                   🗑️ Apagar Figura
                 </button>
               ) : (
-                /* Menu para área vazia */
                 <div className="context-menu-section">
                   <div className="context-menu-title">Ações Gerais</div>
-                  <button 
+                  <button
                     onClick={resetView}
                     className="context-menu-item"
                   >
                     🔄 Resetar Visualização
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       setCurrentPoints([]);
                       setIsDrawing(false);
@@ -457,7 +495,7 @@ const App = () => {
                   </button>
                 </div>
               )}
-              <button 
+              <button
                 onClick={() => setContextMenu({ visible: false, x: 0, y: 0, shapeId: null, pointIndex: null })}
                 className="context-menu-item cancel"
               >
@@ -509,7 +547,7 @@ const App = () => {
         .context-menu-title {
           padding: 6px 12px;
           font-size: 12px;
-          color: #666;
+          color: #665;
           font-weight: bold;
           border-bottom: 1px solid #eee;
           margin-bottom: 4px;
@@ -539,7 +577,7 @@ const App = () => {
         }
 
         .context-menu-item.cancel {
-          color: #666;
+          color: #665;
           border-top: 1px solid #eee;
           margin-top: 4px;
           padding-top: 8px;

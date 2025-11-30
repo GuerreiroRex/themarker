@@ -5,24 +5,25 @@ use tauri::tray::TrayIconBuilder;
 use tauri::{async_runtime, Manager};
 
 pub mod caminhos;
+pub mod db_imagens;
+pub mod db_projetos;
 pub mod enums;
 pub mod inicializador;
+pub mod meudb;
+pub mod mordomo;
+pub mod rotas;
 pub mod servidor;
 pub mod tabelas;
-pub mod rotas;
-pub mod meudb;
-pub mod db_projetos;
-pub mod mordomo;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
         .setup(|app| {
             // pega a janela 'main' (ela foi criada mas está oculta)
@@ -66,6 +67,18 @@ pub fn run() {
             db_projetos::api_projeto_atualizar,
             db_projetos::api_projeto_apagar,
             db_projetos::api_projeto_ler_todos,
+            db_imagens::api_imagem_start,
+            db_imagens::api_imagem_close,
+            db_imagens::api_imagem_criar,
+            db_imagens::api_imagem_ler,
+            db_imagens::api_imagem_atualizar,
+            db_imagens::api_imagem_apagar,
+            db_imagens::api_imagem_ler_todas,
+            db_imagens::api_imagem_contar_total,
+            db_imagens::read_file_as_base64,
+            db_imagens::process_multiple_images,
+            db_imagens::create_image_thumbnail,
+            db_imagens::process_multiple_images,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

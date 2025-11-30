@@ -19,6 +19,8 @@
         }
       ],
       "deny": []
-    }
+    },
+    "opener:default",
+    "dialog:default"
   ]
 }

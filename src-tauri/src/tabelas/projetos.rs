@@ -1,7 +1,7 @@
 use crate::meudb::BancoDeDados;
 
 use actix_web::web;
-use duckdb::{params};
+use duckdb::params;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -20,7 +20,9 @@ impl Projetos {
         let mut comando = client
             .prepare("CREATE TABLE IF NOT EXISTS base.projetos (nome STRING, data_criacao STRING, aberto BOOL, criptografado BOOL)")
             .expect("Erro criando a query.");
-        comando.execute(params![]).expect("Falha ao executar a query.");
+        comando
+            .execute(params![])
+            .expect("Falha ao executar a query.");
     }
 
     pub async fn create(meudb: &web::Data<Arc<BancoDeDados>>, nome: String) {
@@ -31,7 +33,9 @@ impl Projetos {
         let mut comando = client
             .prepare("INSERT INTO base.projetos (nome, data_criacao, aberto, criptografado) VALUES (?, ?, ?, ?);")
             .expect("Erro criando a query.");
-        comando.execute(params![nome]).expect("Falha ao executar a query.");
+        comando
+            .execute(params![nome])
+            .expect("Falha ao executar a query.");
     }
 
     pub async fn read(meudb: &web::Data<Arc<BancoDeDados>>, id: String) -> Option<Projetos> {
@@ -96,12 +100,14 @@ impl Projetos {
 
     pub async fn delete(meudb: &web::Data<Arc<BancoDeDados>>, id: String) {
         Projetos::create_table(&meudb).await;
-        
+
         let client = meudb.cliente.lock().unwrap();
 
         let mut comando = client
             .prepare("DELETE FROM base.projetos WHERE nome = ?;")
             .expect("Falha ao criar a query: DELETE FROM base.projetos WHERE nome = ?.");
-        comando.execute(params![id]).expect("Falha ao executar a query.");
+        comando
+            .execute(params![id])
+            .expect("Falha ao executar a query.");
     }
 }

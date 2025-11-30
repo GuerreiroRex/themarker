@@ -1,12 +1,242 @@
-#modalHospedarProjeto {
+:root {
+  --accent: #ffc74b;
+  --bg-panel: rgba(255,255,255,0.03);
+  --bg-panel-2: rgba(255,255,255,0.04);
+  --muted: rgba(255,255,255,0.6);
+  --glass: rgba(0,0,0,0.35);
+  --success: #6ee7b7;
+  --danger: #ff6b6b;
+  --radius: 12px;
+  --gap: 12px;
+  --shadow-lg: 0 12px 30px rgba(0,0,0,0.6);
+  --shadow-md: 0 6px 18px rgba(0,0,0,0.45);
+  --transition: 180ms cubic-bezier(.2,.8,.2,1);
+}
+
+/* Overlay modal */
+#modalEntrarProjeto.modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  z-index: 1200;
+  background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.55));
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+/* Caixa interna principal */
+#modalEntrarProjeto .modal-content {
+  width: min(480px, calc(100% - 48px));
+  max-height: calc(100vh - 96px);
+  overflow: auto;
+  border-radius: calc(var(--radius) + 6px);
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  box-shadow: var(--shadow-lg);
+  padding: 22px;
+  border: 1px solid rgba(255,255,255,0.04);
+}
+
+/* Botão fechar */
+#modalEntrarProjeto .close-btn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid rgba(255,255,255,0.04);
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  float: right;
+  transition: transform var(--transition), background var(--transition), color var(--transition);
+}
+
+#modalEntrarProjeto .close-btn:hover {
+  transform: translateY(-1px);
+  color: white;
+  background: rgba(255,255,255,0.03);
+}
+
+/* Cabeçalho do modal */
+#modalEntrarProjeto h3 {
+  margin: 6px 0 24px 0;
+  font-size: 18pt;
+  color: var(--accent);
+  letter-spacing: 0.2px;
+  text-align: center;
+  clear: both;
+}
+
+/* Formulário de conexão */
+#modalEntrarProjeto .conectar-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+/* Grupos de input */
+#modalEntrarProjeto .input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#modalEntrarProjeto .input-group label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+/* Inputs estilizados como a chave de criptografia */
+#modalEntrarProjeto .chave-input {
   width: 100%;
-  height: 100%;
+  padding: 10px 12px;
+  margin-bottom: 0;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  background: var(--bg-panel-2);
+  color: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
+}
 
-  background-color: red;
-  position: absolute;
+#modalEntrarProjeto .chave-input::placeholder {
+  color: rgba(255,255,255,0.4);
+}
 
-  left: 0;
-  top: 0;
+#modalEntrarProjeto .chave-input:focus {
+  box-shadow: 0 8px 24px rgba(0,0,0,0.55);
+  transform: translateY(-1px);
+  border-color: rgba(255,199,75,0.55);
+}
 
-  z-index: 1;
+/* Botão ENTRAR */
+#modalEntrarProjeto .entrar-btn {
+  background: linear-gradient(180deg, rgba(255,199,75,0.98), rgba(255,170,45,0.95));
+  color: #1a1a1a;
+  border: none;
+  padding: 16px 24px;
+  border-radius: var(--radius);
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition);
+  box-shadow: 0 10px 24px rgba(255,167,40,0.15);
+  letter-spacing: 0.5px;
+  margin-top: 8px;
+}
+
+#modalEntrarProjeto .entrar-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(255,167,40,0.25);
+}
+
+#modalEntrarProjeto .entrar-btn:active {
+  transform: translateY(1px);
+}
+
+/* Mensagem de erro */
+#modalEntrarProjeto .erro-message {
+  color: var(--danger);
+  background: rgba(255,107,107,0.1);
+  border: 1px solid rgba(255,107,107,0.2);
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 8px;
+  animation: fadeIn 0.3s ease;
+}
+
+/* Informações adicionais */
+#modalEntrarProjeto .conectar-info {
+  margin-top: 20px;
+  padding: 16px;
+  background: var(--bg-panel);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+#modalEntrarProjeto .conectar-info p {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Container dos inputs - similar ao container da chave de abertura */
+#modalEntrarProjeto .input-container {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--bg-panel);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+/* Animações */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsividade */
+@media (max-width: 680px) {
+  #modalEntrarProjeto.modal {
+    padding: 16px;
+  }
+  
+  #modalEntrarProjeto .modal-content {
+    width: 100%;
+    padding: 18px;
+    border-radius: 12px;
+  }
+  
+  #modalEntrarProjeto h3 {
+    font-size: 16pt;
+    margin-bottom: 20px;
+  }
+  
+  #modalEntrarProjeto .conectar-form {
+    gap: 16px;
+  }
+  
+  #modalEntrarProjeto .chave-input {
+    padding: 10px 12px;
+  }
+  
+  #modalEntrarProjeto .entrar-btn {
+    padding: 14px 20px;
+  }
+}
+
+/* Pequenos refinamentos de acessibilidade */
+#modalEntrarProjeto button:focus, 
+#modalEntrarProjeto .chave-input:focus {
+  outline: 3px solid rgba(255,199,75,0.14);
+  outline-offset: 2px;
+}
+
+/* Suaviza aparecimento do modal */
+#modalEntrarProjeto.modal[aria-hidden="false"] .modal-content {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+#modalEntrarProjeto .modal-content {
+  transform: translateY(6px);
+  opacity: 0.98;
+  transition: transform 220ms cubic-bezier(.2,.9,.3,1), opacity 220ms ease;
 }

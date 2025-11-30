@@ -5,12 +5,15 @@ import Config from "./telas/configuracoes/App.jsx";
 import Principal from "./telas/principal/App.jsx";
 import "./App.css";
 
+
+import { useParams } from 'react-router-dom';
+
 function App() {
   useEffect(() => {
     const handleContextMenu = (e) => {
       // Permite clique direito apenas em elementos com a classe allow-right-click
       const allowRightClick = e.target.closest('.allow-right-click');
-      
+
       if (!allowRightClick) {
         e.preventDefault();
         e.stopPropagation();
@@ -26,12 +29,22 @@ function App() {
     };
   }, []);
 
+  // Wrapper component para o Principal
+  const PrincipalWrapper = () => {
+    const { id } = useParams(); // Obtém o ID da URL
+
+    let chave = Date.now();
+
+    return <Principal key={chave} id={id} />;
+  };
+
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Menu />} />
         <Route path="/settings" element={<Config />} />
-        <Route path="/principal/:id" element={<Principal />} />
+        {/* <Route path="/principal/:id" element={<Principal />} key={1} /> */}
+         <Route path="/principal/:id" element={<PrincipalWrapper />} />
       </Routes>
     </Router>
   );

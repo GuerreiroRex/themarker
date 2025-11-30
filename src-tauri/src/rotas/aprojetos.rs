@@ -49,31 +49,3 @@ pub async fn criar_projeto(
         .content_type("application/json; charset=utf-8")
         .body("OK")
 }
-
-// pub async fn atualizar_projeto(
-//     meudata: web::Data<Arc<BancoDeDados>>,
-//     recebido: web::Json<Projeto>,
-// ) -> impl Responder {
-//     let resposta = recebido.into_inner();
-//     let nome = resposta.nome;
-
-//     futures::executor::block_on(Projetos::update(&meudata, nome));
-
-//     HttpResponse::Ok()
-//         .content_type("application/json; charset=utf-8")
-//         .body("OK")
-// }
-
-// pub async fn apagar_projeto(
-//     meudata: web::Data<Arc<BancoDeDados>>,
-//     recebido: web::Json<Projeto>,
-// ) -> impl Responder {
-//     let resposta = recebido.into_inner();
-//     let nome = resposta.nome;
-
-//     futures::executor::block_on(Projetos::delete(&meudata, nome));
-
-//     HttpResponse::Ok()
-//         .content_type("application/json; charset=utf-8")
-//         .body("OK")
-// }

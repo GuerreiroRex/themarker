@@ -2,10 +2,10 @@ use crate::servidor::SERVIDORES;
 
 fn api_servidor_encontrar(id_servidor: String) -> String {
     let dicionario_servidor = SERVIDORES.lock().unwrap();
-    let servidor = dicionario_servidor.get( id_servidor.as_str() ).unwrap();
+    let servidor = dicionario_servidor.get(id_servidor.as_str()).unwrap();
 
     let endereço = servidor.mostrar_url();
-    
+
     endereço
 }
 //////////////////////////////////////////////////////////
