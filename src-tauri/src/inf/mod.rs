@@ -52,7 +52,7 @@ pub async fn executar_script_python(
         resource_dir
             .join(".venv")
             .join("Scripts")
-            .join("python.exe")
+            .join("pythonw.exe")
     } else {
         resource_dir.join(".venv").join("bin").join("python")
     };
