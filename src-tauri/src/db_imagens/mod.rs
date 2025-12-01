@@ -6,11 +6,12 @@ use std::sync::{Arc, Mutex};
 
 use std::fs;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use std::fs::File;
+use std::io::Write;
 
 lazy_static! {
     pub static ref IMAGENS: Arc<Mutex<Option<Arc<FrameImagens>>>> = Arc::new(Mutex::new(None));
 }
-
 
 pub struct FrameImagens {
     banco_de_dados: Arc<BancoDeDados>,
@@ -142,6 +143,36 @@ pub async fn process_multiple_images(file_paths: Vec<String>) -> Result<Vec<Imag
     
     Ok(results)
 }
+
+#[tauri::command]
+pub async fn api_imagem_salvar(caminho: String, conteudo: String) -> Result<String, String> {
+    // Verificar se o caminho termina com .json
+    let caminho_final = if caminho.ends_with(".json") {
+        caminho
+    } else {
+        format!("{}.json", caminho)
+    };
+
+    // Criar o arquivo e escrever o conteúdo
+    match File::create(&caminho_final) {
+        Ok(mut file) => {
+            if let Err(e) = file.write_all(conteudo.as_bytes()) {
+                return Err(format!("Erro ao escrever no arquivo: {}", e));
+            }
+            
+            // Forçar o flush para garantir que os dados foram escritos
+            if let Err(e) = file.flush() {
+                return Err(format!("Erro ao fazer flush do arquivo: {}", e));
+            }
+            
+            Ok(format!("Arquivo salvo com sucesso: {}", caminho_final))
+        }
+        Err(e) => {
+            Err(format!("Erro ao criar arquivo: {}", e))
+        }
+    }
+}
+
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Imagem {

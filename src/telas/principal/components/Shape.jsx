@@ -21,11 +21,26 @@ const Shape = ({
   const dragInitialWorldRef = useRef(null);
   const stageRef = useRef(null);
 
+  // Calcular pontos médios apenas para polígonos ou quadrados convertidos (5+ pontos)
+  const shouldShowMidPoints = shape.type !== 'square' || shape.points.length > 4;
+
   const flatPoints = shape.points.flatMap(p => [p.x, p.y]);
   const centerX = shape.points.reduce((sum, p) => sum + p.x, 0) / shape.points.length;
   const centerY = shape.points.reduce((sum, p) => sum + p.y, 0) / shape.points.length;
   const pointRadius = 6 / scale;
   const midPointRadius = 4 / scale;
+
+  // Determinar cores baseadas no tipo e estado
+  const getShapeColor = () => {
+    if (isDragging) return '#ffc74b';
+    if (hovered) return '#ffc74b';
+    return shape.type === 'square' ? 'blue' : 'red';
+  };
+
+  const getPointColor = (index) => {
+    if (hoveredPoint === index) return '#ff4444';
+    return shape.type === 'square' && shape.points.length === 4 ? 'green' : 'blue';
+  };
 
   /**
    * Início do arrasto da figura inteira.
@@ -196,10 +211,10 @@ const Shape = ({
         listening={true}
       />
 
-      {/* Contorno visível */}
+      {/* Contorno visível - cor diferente para quadrados vs polígonos */}
       <Line
         points={flatPoints}
-        stroke={isDragging ? '#ffc74b' : (hovered ? '#ffc74b' : 'red')}
+        stroke={getShapeColor()}
         strokeWidth={isDragging ? 3 / scale : 2 / scale}
         closed={true}
         listening={false}
@@ -211,7 +226,7 @@ const Shape = ({
         <Text
           x={centerX - 50 / scale}
           y={centerY - 20 / scale}
-          text={`${shape.name}\nArraste para mover`}
+          text={`${shape.name}${shape.type === 'square' && shape.points.length === 4 ? ' (Quadrado)' : ' (Polígono)'}\nArraste para mover`}
           fontSize={12 / scale}
           fill="black"
           padding={5 / scale}
@@ -227,7 +242,7 @@ const Shape = ({
           x={point.x}
           y={point.y}
           radius={pointRadius}
-          fill={hoveredPoint === index ? '#ff4444' : 'blue'}
+          fill={getPointColor(index)}
           draggable
           onDragStart={(e) => {
             if (e && e.evt) e.evt.cancelBubble = true;
@@ -255,8 +270,8 @@ const Shape = ({
         />
       ))}
 
-      {/* Pontos médios das arestas para inserir novo vértice */}
-      {shape.points.map((point, index) => {
+      {/* Pontos médios das arestas - APENAS para polígonos ou quadrados com + de 4 pontos */}
+      {shouldShowMidPoints && shape.points.map((point, index) => {
         const nextPoint = shape.points[(index + 1) % shape.points.length];
         const midPoint = { x: (point.x + nextPoint.x) / 2, y: (point.y + nextPoint.y) / 2 };
         return (
@@ -265,7 +280,7 @@ const Shape = ({
             x={midPoint.x}
             y={midPoint.y}
             radius={midPointRadius}
-            fill="green"
+            fill="orange"
             onClick={(e) => {
               e.cancelBubble = true;
               onAddPointOnLine && onAddPointOnLine(shape.id, index, midPoint);
@@ -273,6 +288,18 @@ const Shape = ({
             onTouchEnd={(e) => {
               e.cancelBubble = true;
               onAddPointOnLine && onAddPointOnLine(shape.id, index, midPoint);
+            }}
+            onMouseEnter={(e) => {
+              const stage = e.target.getStage();
+              if (stage && stage.container()) {
+                stage.container().style.cursor = 'pointer';
+              }
+            }}
+            onMouseLeave={(e) => {
+              const stage = e.target.getStage();
+              if (stage && stage.container() && !isDragging) {
+                stage.container().style.cursor = 'default';
+              }
             }}
             onMouseDown={(e) => { e.cancelBubble = true; }}
           />

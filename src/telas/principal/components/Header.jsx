@@ -14,12 +14,24 @@ const MODES = {
   POLYGON: 'polygon',
 };
 
-const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, scale, resetView, onImageSelect }) => {
+const Header = ({ 
+  mode, 
+  setMode, 
+  currentPoints, 
+  setIsDrawing, 
+  setCurrentPoints, 
+  scale, 
+  resetView, 
+  onImageSelect, 
+  onSave,
+  onPreview  // função passada pelo pai (pode ser sync ou async)
+}) => {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [images, setImages] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalImages, setTotalImages] = useState(0);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const imagesPerPage = 10;
 
   // Function to create image via API
@@ -60,19 +72,25 @@ const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, 
     }
   };
 
-  // Load images when page changes
+  // Load images when menu opens
   useEffect(() => {
-    loadImages(currentPage);
-    getTotalImagesCount();
+    if (isMenuOpen) {
+      loadImages(currentPage);
+      getTotalImagesCount();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMenuOpen]);
 
   // Handle pagination change
   const handlePageChange = (event, value) => {
+    if (isPreviewLoading) return;
     setCurrentPage(value);
+    loadImages(value);
   };
 
   // Handle image deletion
   const handleDeleteImage = async (id) => {
+    if (isPreviewLoading) return;
     try {
       await invoke('api_imagem_apagar', { id: id });
       // Reload current page after deletion
@@ -80,38 +98,70 @@ const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, 
       getTotalImagesCount();
     } catch (error) {
       console.error('Erro ao deletar imagem:', error);
-      alert('Erro ao deletar imagem');
+      // alert('Erro ao deletar imagem');
     }
   };
 
   // Handle image selection
   const handleImageClick = (image) => {
+    if (isPreviewLoading) return;
     if (onImageSelect) {
       onImageSelect(image);
     }
-    setIsMenuOpen(false); // Fecha o menu após selecionar
+    setIsMenuOpen(false);
   };
 
   const handleModeChange = (newMode) => {
+    if (isPreviewLoading) return;
     setMode(newMode);
     setCurrentPoints([]);
     setIsDrawing(false);
   };
 
   const handleCloseProject = async () => {
-      navigate(`/`);
+    if (isPreviewLoading) return;
+    navigate(`/`);
   };
 
   const handleSave = () => {
-    alert('Funcionalidade de salvar não implementada');
+    if (isPreviewLoading) return;
+    if (onSave) {
+      onSave();
+    } else {
+      // alert('Funcionalidade de salvar não implementada');
+    }
   };
 
-  const handlePreviewMode = () => {
-    alert('Funcionalidade de modo preview não implementada');
+  // handlePreviewMode agora força Modo Seleção antes de bloquear UI
+  const handlePreviewMode = async () => {
+    if (isPreviewLoading) return;
+    if (!onPreview) {
+      // alert('Funcionalidade de preview não implementada');
+      return;
+    }
+
+    // Sempre volta ao modo SELEÇÃO antes de travar a interface
+    setMode(MODES.SELECTION);
+    setCurrentPoints([]);
+    setIsDrawing(false);
+
+    setIsPreviewLoading(true);
+    try {
+      const result = onPreview();
+      if (result && typeof result.then === 'function') {
+        await result;
+      }
+    } catch (error) {
+      console.error('Erro no preview:', error);
+      // alert('Erro ao executar preview');
+    } finally {
+      setIsPreviewLoading(false);
+    }
   };
 
   // Enhanced function to add image
   const handleAddImage = async () => {
+    if (isPreviewLoading) return;
     try {
       const selected = await open({
         multiple: true,
@@ -120,25 +170,25 @@ const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, 
           extensions: ['png', 'jpeg', 'jpg', 'gif', 'bmp', 'webp']
         }]
       });
-      
+
       if (selected) {
         const selectedFiles = Array.isArray(selected) ? selected : [selected];
         console.log('Arquivos selecionados:', selectedFiles);
-        
+
         try {
           // Use the Rust command to process multiple images
           const processedImages = await invoke('process_multiple_images', {
             filePaths: selectedFiles
           });
-          
+
           console.log('Imagens processadas pelo backend:', processedImages);
-          
+
           // Store each processed image in the database
           let successCount = 0;
           for (const imageResult of processedImages) {
             const success = await createImage(
-              imageResult.file_path, 
-              imageResult.base64, 
+              imageResult.file_path,
+              imageResult.base64,
               imageResult.thumbnail
             );
             if (success) {
@@ -146,20 +196,20 @@ const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, 
               console.log(`Imagem ${imageResult.file_path} criada com sucesso`);
             }
           }
-          
+
           // Reload images after adding new ones
           loadImages(currentPage);
           getTotalImagesCount();
-          alert(`${successCount} imagem(ns) adicionada(s) com sucesso!`);
-          
+          // alert(`${successCount} imagem(ns) adicionada(s) com sucesso!`);
+
         } catch (processingError) {
           console.error('Erro ao processar imagens no backend:', processingError);
-          alert('Erro ao processar imagens no backend');
+          // alert('Erro ao processar imagens no backend');
         }
       }
     } catch (error) {
       console.error('Erro ao abrir diálogo de imagem:', error);
-      alert('Erro ao selecionar imagens');
+      // alert('Erro ao selecionar imagens');
     } finally {
       setIsMenuOpen(false);
     }
@@ -175,26 +225,29 @@ const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, 
 
   // Function to get thumbnail source
   const getThumbnailSrc = (image) => {
-    // Primeiro tenta usar a thumbnail, depois fallback para base64 completo
     if (image.thumbnail) {
       return `data:image/png;base64,${image.thumbnail}`;
     } else if (image.base64) {
-      // Se não há thumbnail, usa os primeiros caracteres do base64 como fallback
       const shortBase64 = image.base64.length > 2000 ? image.base64.substring(0, 2000) : image.base64;
       return `data:image/png;base64,${shortBase64}`;
     }
     return null;
   };
 
+  // style inline usado para desabilitar interações no menu lateral (fallback)
+  const sideMenuInteractionStyle = isPreviewLoading ? { pointerEvents: 'none', opacity: 0.5 } : {};
+
   return (
     <>
-      <header className="header">
+      <header className={`header ${isPreviewLoading ? 'blocked' : ''}`} aria-busy={isPreviewLoading}>
         <div className="header-content">
           {/* Left side: logo and hamburger menu */}
           <div className="header-left">
-            <button 
-              className="hamburger-button" 
-              onClick={() => setIsMenuOpen(true)}
+            <button
+              className="hamburger-button"
+              onClick={() => !isPreviewLoading && setIsMenuOpen(true)}
+              disabled={isPreviewLoading}
+              title={isPreviewLoading ? "Aguarde: carregando preview..." : "Abrir menu"}
             >
               <span></span>
               <span></span>
@@ -212,30 +265,33 @@ const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, 
           {/* Center: drawing mode selector */}
           <div className="header-center">
             <div className="mode-selector">
-              <button 
+              <button
                 className={`mode-button ${mode === MODES.SELECTION ? 'active' : ''}`}
                 onClick={() => handleModeChange(MODES.SELECTION)}
                 title="Modo Seleção"
+                disabled={isPreviewLoading}
               >
                 <div className="mode-button-content">
                   <FaMousePointer className="mode-icon" />
                   <span>Seleção</span>
                 </div>
               </button>
-              <button 
+              <button
                 className={`mode-button ${mode === MODES.SQUARE ? 'active' : ''}`}
                 onClick={() => handleModeChange(MODES.SQUARE)}
                 title="Modo Quadrado"
+                disabled={isPreviewLoading}
               >
                 <div className="mode-button-content">
                   <FaSquare className="mode-icon" />
                   <span>Quadrado</span>
                 </div>
               </button>
-              <button 
+              <button
                 className={`mode-button ${mode === MODES.POLYGON ? 'active' : ''}`}
                 onClick={() => handleModeChange(MODES.POLYGON)}
                 title="Modo Polígono"
+                disabled={isPreviewLoading}
               >
                 <div className="mode-button-content">
                   <FaDrawPolygon className="mode-icon" />
@@ -252,27 +308,30 @@ const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, 
                 <span className="zoom-label">Zoom</span>
                 <span className="zoom-level">{Math.round(scale * 100)}%</span>
               </div>
-              <button 
-                className="zoom-button" 
-                onClick={resetView}
+              <button
+                className="zoom-button"
+                onClick={() => !isPreviewLoading && resetView()}
                 title="Resetar Zoom"
+                disabled={isPreviewLoading}
               >
                 {scale === 1 ? <FaCompress /> : <FaExpand />}
               </button>
             </div>
-            
+
             <div className="action-buttons">
-              <button 
-                className="action-button preview-button" 
+              <button
+                className="action-button preview-button"
                 onClick={handlePreviewMode}
-                title="Modo Previsão"
+                title={isPreviewLoading ? "Carregando preview..." : "Executar Script Python"}
+                disabled={isPreviewLoading}
               >
-                <FaEye className="action-icon" />
+                {isPreviewLoading ? <span>Carregando...</span> : <FaEye className="action-icon" />}
               </button>
-              <button 
-                className="action-button save-button" 
+              <button
+                className="action-button save-button"
                 onClick={handleSave}
-                title="Salvar"
+                title="Salvar COCO Dataset"
+                disabled={isPreviewLoading}
               >
                 <FaSave className="action-icon" />
               </button>
@@ -282,24 +341,26 @@ const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, 
       </header>
 
       {/* Side menu (drawer) */}
-      <div className={`side-menu ${isMenuOpen ? 'open' : ''}`}>
+      <div className={`side-menu ${isMenuOpen ? 'open' : ''} ${isPreviewLoading ? 'blocked' : ''}`} style={sideMenuInteractionStyle}>
         <div className="menu-header">
           <div className="menu-title">
             <h2>Navegação</h2>
             <span className="menu-subtitle">The Marker</span>
           </div>
-          <button 
-            className="close-menu-button" 
-            onClick={() => setIsMenuOpen(false)}
+          <button
+            className="close-menu-button"
+            onClick={() => !isPreviewLoading && setIsMenuOpen(false)}
+            disabled={isPreviewLoading}
           >
             ×
           </button>
         </div>
-        
+
         <div className="menu-content">
-          <button 
-            className="menu-item close-project-button" 
+          <button
+            className="menu-item close-project-button"
             onClick={handleCloseProject}
+            disabled={isPreviewLoading}
           >
             <div className="menu-item-content">
               <FaHome className="menu-icon" />
@@ -309,9 +370,10 @@ const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, 
           </button>
 
           {/* Add Image Button */}
-          <button 
-            className="menu-item add-image-button" 
+          <button
+            className="menu-item add-image-button"
             onClick={handleAddImage}
+            disabled={isPreviewLoading}
           >
             <div className="menu-item-content">
               <FaImage className="menu-icon" />
@@ -330,19 +392,19 @@ const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, 
                 images.map((image) => {
                   const thumbnailSrc = getThumbnailSrc(image);
                   return (
-                    <div 
-                      key={image.id} 
-                      className="image-item clickable"
-                      onClick={() => handleImageClick(image)}
+                    <div
+                      key={image.id}
+                      className={`image-item clickable ${isPreviewLoading ? 'disabled' : ''}`}
+                      onClick={() => !isPreviewLoading && handleImageClick(image)}
+                      style={isPreviewLoading ? { pointerEvents: 'none', opacity: 0.6 } : {}}
                     >
                       <div className="image-preview">
                         {thumbnailSrc ? (
-                          <img 
+                          <img
                             src={thumbnailSrc}
                             alt="Preview"
                             className="thumbnail-image"
                             onError={(e) => {
-                              // Fallback para placeholder se a imagem falhar
                               e.target.style.display = 'none';
                               e.target.nextSibling.style.display = 'flex';
                             }}
@@ -358,13 +420,15 @@ const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, 
                         </span>
                         <span className="image-id">ID: {image.id?.substring(0, 8) || 'N/A'}...</span>
                       </div>
-                      <button 
+                      <button
                         className="delete-image-button"
                         onClick={(e) => {
-                          e.stopPropagation(); // Impede que o clique propague para o image-item
+                          e.stopPropagation();
+                          if (isPreviewLoading) return;
                           handleDeleteImage(image.id);
                         }}
                         title="Deletar imagem"
+                        disabled={isPreviewLoading}
                       >
                         <FaTrash />
                       </button>
@@ -378,12 +442,13 @@ const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, 
             {totalPages > 1 && (
               <div className="pagination-container">
                 <Stack spacing={2}>
-                  <Pagination 
-                    count={totalPages} 
+                  <Pagination
+                    count={totalPages}
                     page={currentPage}
                     onChange={handlePageChange}
                     color="primary"
                     size="small"
+                    disabled={isPreviewLoading}
                   />
                 </Stack>
                 <div className="pagination-info">
@@ -403,10 +468,32 @@ const Header = ({ mode, setMode, currentPoints, setIsDrawing, setCurrentPoints, 
 
       {/* Overlay to close menu when clicking outside */}
       {isMenuOpen && (
-        <div 
-          className="menu-overlay" 
-          onClick={() => setIsMenuOpen(false)}
+        <div
+          className="menu-overlay"
+          onClick={() => !isPreviewLoading && setIsMenuOpen(false)}
+          style={isPreviewLoading ? { pointerEvents: 'none' } : {}}
         ></div>
+      )}
+
+      {/* Overlay visual que aparece enquanto isPreviewLoading === true */}
+      {isPreviewLoading && (
+        <div
+          className="global-block-overlay"
+          role="status"
+          aria-live="polite"
+          aria-label="Preview em execução. Interface bloqueada."
+        >
+          <div className="block-inner">
+            <div className="spinner" aria-hidden="true"></div>
+            <div>
+              <div className="blocked-message">
+                <strong>Preview em execução</strong>
+                <span> — interface bloqueada</span>
+              </div>
+              <div className="blocked-hint">Modo alterado para <em>Seleção</em></div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );

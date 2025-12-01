@@ -27,7 +27,7 @@ const CurrentShape = ({ mode, currentPoints, mousePos, isDrawing, scale = 1, sta
         <Line
           points={points}
           fill="rgba(100, 150, 255, 0.3)"
-          stroke="red"
+          stroke="blue"  // Changed from red to blue for squares
           strokeWidth={2 / scale}
           closed={true}
           listening={false}
@@ -36,6 +36,14 @@ const CurrentShape = ({ mode, currentPoints, mousePos, isDrawing, scale = 1, sta
           x={adjustedMousePos.x}
           y={adjustedMousePos.y}
           radius={6 / scale}
+          fill="green"  // Changed to green for square points
+          listening={false}
+        />
+        <Text
+          x={adjustedMousePos.x + 10 / scale}
+          y={adjustedMousePos.y - 20 / scale}
+          text="Clique para completar o quadrado"
+          fontSize={12 / scale}
           fill="blue"
           listening={false}
         />
@@ -101,7 +109,7 @@ const CurrentShape = ({ mode, currentPoints, mousePos, isDrawing, scale = 1, sta
           x={adjustedMousePos.x}
           y={adjustedMousePos.y}
           radius={6 / scale}
-          fill="blue"
+          fill={shouldClose ? "green" : "blue"}
           listening={false}
         />
 
@@ -109,7 +117,18 @@ const CurrentShape = ({ mode, currentPoints, mousePos, isDrawing, scale = 1, sta
           <Text
             x={adjustedMousePos.x + 10 / scale}
             y={adjustedMousePos.y - 20 / scale}
-            text="Clique para fechar"
+            text="Clique para fechar o polígono"
+            fontSize={12 / scale}
+            fill="red"
+            listening={false}
+          />
+        )}
+
+        {!shouldClose && currentPoints.length > 0 && (
+          <Text
+            x={adjustedMousePos.x + 10 / scale}
+            y={adjustedMousePos.y - 20 / scale}
+            text={`Pontos: ${currentPoints.length + 1} (Clique no primeiro ponto para fechar)`}
             fontSize={12 / scale}
             fill="red"
             listening={false}

@@ -39,7 +39,7 @@ function ModalHospedarProjeto({ fecharmodal }) {
     e.preventDefault();
     if (!novoNome.trim()) return;
     if (novoCripto && !novaChave.trim()) {
-      alert("Por favor, insira uma chave para projetos com criptografia");
+      // alert("Por favor, insira uma chave para projetos com criptografia");
       return;
     }
     try {
@@ -112,7 +112,7 @@ function ModalHospedarProjeto({ fecharmodal }) {
 
   function confirmarAbertura() {
     if (!chaveAbertura.trim()) {
-      alert("Por favor, insira a chave para abrir o projeto");
+      // alert("Por favor, insira a chave para abrir o projeto");
       return;
     }
     

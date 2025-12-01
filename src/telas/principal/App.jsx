@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { Stage, Layer, Line, Image as KonvaImage } from 'react-konva';
 import { useParams } from 'react-router-dom';
 import { invoke } from '@tauri-apps/api/core';
+import { save } from '@tauri-apps/plugin-dialog';
 import Shape from './components/Shape';
 import CurrentShape from './components/CurrentShape';
 import Header from './components/Header';
@@ -36,16 +37,39 @@ const App = ({ id }) => {
   const containerRef = useRef();
   const [stageSize, setStageSize] = useState({ width: window.innerWidth, height: window.innerHeight - 80 });
   const [currentImage, setCurrentImage] = useState(null);
+  const [currentImageBase64, setCurrentImageBase64] = useState(null); // Novo estado para armazenar a base64 da imagem original
 
   // Efeito para carregar a imagem padrão do gato
   useEffect(() => {
     const img = new window.Image();
     img.src = '/gato.jpg';
-    img.onload = () => setCurrentImage(img);
+    img.onload = () => {
+      setCurrentImage(img);
+      // Converter a imagem padrão para base64
+      convertImageToBase64(img.src, (base64) => {
+        setCurrentImageBase64(base64);
+      });
+    };
     img.onerror = (err) => {
       console.error('Erro ao carregar /gato.jpg', err);
     };
   }, []);
+
+  // Função para converter imagem em base64
+  const convertImageToBase64 = (src, callback) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+      const dataURL = canvas.toDataURL('image/png');
+      callback(dataURL.split(',')[1]); // Remove o prefixo data:image/png;base64,
+    };
+    img.src = src;
+  };
 
   const location = useLocation();
 
@@ -55,6 +79,7 @@ const App = ({ id }) => {
       const img = new window.Image();
       img.onload = () => {
         setCurrentImage(img);
+        setCurrentImageBase64(selectedImage.base64); // Armazena a base64 da imagem selecionada
         // Resetar a visualização quando uma nova imagem é carregada
         setScale(1);
         setStagePos({ x: 0, y: 0 });
@@ -85,7 +110,7 @@ const App = ({ id }) => {
     console.log("Efeito de inicialização disparado para ID:", id);
     initializeImage();
 
-    }, [location.pathname, id]);
+  }, [location.pathname, id]);
 
   // Restante dos useEffects existentes...
   useEffect(() => {
@@ -115,6 +140,118 @@ const App = ({ id }) => {
       if (stage) stage.off('mousemove', handleMouseMove);
     };
   }, []);
+
+  // Função para converter o resultado do script Python em pontos e criar um polígono
+  const createPolygonFromPythonResult = (result) => {
+    try {
+      // Converter a string do resultado em um array de números
+      const pointsArray = Array.isArray(result) ? result : JSON.parse(result);
+
+      // Converter array de números [x1, y1, x2, y2, ...] em array de objetos {x, y}
+      const polygonPoints = [];
+      for (let i = 0; i < pointsArray.length; i += 2) {
+        if (i + 1 < pointsArray.length) {
+          polygonPoints.push({
+            x: pointsArray[i],
+            y: pointsArray[i + 1]
+          });
+        }
+      }
+
+      // Criar o novo shape do tipo polígono
+      const newShape = {
+        type: 'polygon',
+        points: polygonPoints,
+        id: `python-polygon-${Date.now()}`,
+        name: `Polígono Inferido`
+      };
+
+      // Adicionar à lista de shapes
+      setShapes(prevShapes => [...prevShapes, newShape]);
+
+      console.log('Polígono criado a partir do resultado Python:', newShape);
+      return true;
+    } catch (error) {
+      console.error('Erro ao criar polígono a partir do resultado Python:', error);
+      return false;
+    }
+  };
+
+  const handlePreviewMode = async () => {
+    if (!currentImage) {
+      // alert('Nenhuma imagem carregada para executar o script Python');
+      return;
+    }
+
+    // Filtrar apenas as formas do tipo quadrado
+    const squares = shapes.filter(shape => shape.type === 'square');
+
+    if (squares.length === 0) {
+      // alert('Nenhum quadrado encontrado para executar o script Python');
+      return;
+    }
+
+    try {
+      // Usar a imagem base64 original em vez de fazer print do stage
+      if (!currentImageBase64) {
+        // alert('Imagem base64 não disponível');
+        return;
+      }
+
+      // Salvar a imagem temporária usando a base64 original
+      try {
+        await invoke('salvar_imagem_temp', { imageBase64: currentImageBase64 });
+      } catch (error) {
+        console.error('Erro ao salvar imagem temporária:', error);
+        // alert('Erro ao salvar imagem temporária: ' + error);
+        return;
+      }
+
+      // Executar o script Python para cada quadrado
+      for (const square of squares) {
+        try {
+
+          console.log(`Executando script para quadrado ${square.name}... {}`, square.points);
+          // Pegar ponto A (index 0) e ponto C (index 2)
+          const pointA = square.points[0]; 
+          // const pointD = square.points[3]; 
+          const pointD = square.points[2];
+
+          // Formatar como "x1,y1,x4,y4" (A e D)
+          const pointsString = `${pointA.x},${pointA.y},${pointD.x},${pointD.y}`;
+
+          console.log(`Executando script para quadrado ${square.name}:`, pointsString);
+          console.log(`Ponto A (top-left):`, pointA);
+          console.log(`Ponto D (bottom-left):`, pointD);
+
+          // Chamar a função Rust apenas com os pontos
+          const result = await invoke('executar_script_python', {
+            points: pointsString
+          });
+
+          console.log(`Resultado para ${square.name}:`, result);
+
+          // Criar polígono a partir do resultado
+          const success = createPolygonFromPythonResult(result);
+          if (success) {
+            console.log(`Polígono criado com sucesso para ${square.name}`);
+          } else {
+            console.error(`Falha ao criar polígono para ${square.name}`);
+          }
+
+        } catch (error) {
+          console.error(`Erro ao executar script para ${square.name}:`, error);
+          // alert(`Erro ao executar script para ${square.name}: ${error}`);
+        }
+      }
+
+      // alert('Script Python executado para todos os quadrados! Polígonos criados a partir dos resultados.');
+
+    } catch (error) {
+      console.error('Erro geral ao executar preview:', error);
+      // alert('Erro ao executar preview: ' + error);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -225,12 +362,16 @@ const App = ({ id }) => {
       } else {
         const start = currentPoints[0];
         const end = adjustedPos;
+
+        // CORREÇÃO: Ordem correta dos pontos do quadrado
+        // A (superior esquerdo), B (superior direito), C (inferior direito), D (inferior esquerdo)
         const squarePoints = [
-          { x: start.x, y: start.y },
-          { x: end.x, y: start.y },
-          { x: end.x, y: end.y },
-          { x: start.x, y: end.y }
+          { x: Math.min(start.x, end.x), y: Math.min(start.y, end.y) }, // A - superior esquerdo
+          { x: Math.max(start.x, end.x), y: Math.min(start.y, end.y) }, // B - superior direito  
+          { x: Math.max(start.x, end.x), y: Math.max(start.y, end.y) }, // C - inferior direito
+          { x: Math.min(start.x, end.x), y: Math.max(start.y, end.y) }  // D - inferior esquerdo
         ];
+
         setShapes(prevShapes => [...prevShapes, {
           type: 'square',
           points: squarePoints,
@@ -294,31 +435,108 @@ const App = ({ id }) => {
   };
 
   const handlePointDragMove = (shapeId, pointIndex, newPos) => {
-    setShapes(prevShapes => prevShapes.map(shape =>
-      shape.id === shapeId
-        ? {
-          ...shape,
-          points: shape.points.map((p, i) =>
-            i === pointIndex ? { x: newPos.x, y: newPos.y } : p
-          )
-        }
-        : shape
-    ));
+    setShapes(prevShapes => prevShapes.map(shape => {
+      if (shape.id !== shapeId) return shape;
+
+      // Se for um quadrado com 4 pontos, manter a forma quadrada
+      if (shape.type === 'square' && shape.points.length === 4) {
+        return maintainSquareShape(shape, pointIndex, newPos);
+      }
+
+      // Para polígonos ou quadrados com mais de 4 pontos, comportamento normal
+      return {
+        ...shape,
+        points: shape.points.map((p, i) =>
+          i === pointIndex ? { x: newPos.x, y: newPos.y } : p
+        )
+      };
+    }));
+  };
+
+  // Função para manter a forma quadrada ao mover pontos
+  const maintainSquareShape = (shape, draggedPointIndex, newPos) => {
+    const points = [...shape.points];
+
+    // A = points[0], B = points[1], C = points[2], D = points[3]
+    const [A, B, C, D] = points;
+
+    switch (draggedPointIndex) {
+      case 0: // Ponto A (top-left)
+        points[0] = newPos;
+        // B deve ter o Y de A e X de D (C)
+        points[1] = { x: B.x, y: newPos.y };
+        // D deve ter o X de A e Y de D (C)
+        points[3] = { x: newPos.x, y: D.y };
+        // C deve ter o X de B e Y de D
+        points[2] = { x: B.x, y: D.y };
+        break;
+
+      case 1: // Ponto B (top-right)
+        points[1] = newPos;
+        // A deve ter o Y de B
+        points[0] = { x: A.x, y: newPos.y };
+        // C deve ter o X de B e Y de C
+        points[2] = { x: newPos.x, y: C.y };
+        // D deve ter o X de A e Y de C
+        points[3] = { x: A.x, y: C.y };
+        break;
+
+      case 2: // Ponto C (bottom-right)
+        points[2] = newPos;
+        // B deve ter o X de C
+        points[1] = { x: newPos.x, y: B.y };
+        // D deve ter o Y de C
+        points[3] = { x: D.x, y: newPos.y };
+        // A deve ter o X de D e Y de B
+        points[0] = { x: D.x, y: B.y };
+        break;
+
+      case 3: // Ponto D (bottom-left)
+        points[3] = newPos;
+        // A deve ter o X de D
+        points[0] = { x: newPos.x, y: A.y };
+        // C deve ter o Y de D
+        points[2] = { x: C.x, y: newPos.y };
+        // B deve ter o X de C e Y de A
+        points[1] = { x: C.x, y: A.y };
+        break;
+
+      default:
+        points[draggedPointIndex] = newPos;
+        break;
+    }
+
+    return { ...shape, points };
   };
 
   const addPointOnLine = (shapeId, lineIndex, pos) => {
-    setShapes(prevShapes => prevShapes.map(shape =>
-      shape.id === shapeId
-        ? {
-          ...shape,
-          points: [
-            ...shape.points.slice(0, lineIndex + 1),
-            pos,
-            ...shape.points.slice(lineIndex + 1)
-          ]
-        }
-        : shape
-    ));
+    setShapes(prevShapes => prevShapes.map(shape => {
+      if (shape.id !== shapeId) return shape;
+
+      const newPoints = [
+        ...shape.points.slice(0, lineIndex + 1),
+        pos,
+        ...shape.points.slice(lineIndex + 1)
+      ];
+
+      // Se era um quadrado e agora tem 5+ pontos, converter para polígono
+      let newType = shape.type;
+      let newName = shape.name;
+
+      if (shape.type === 'square' && newPoints.length >= 5) {
+        newType = 'polygon';
+        // Atualiza o nome para refletir a conversão
+        const polyCount = prevShapes.filter(s => s.type === 'polygon').length + 1;
+        newName = `Polígono ${polyCount}`;
+      }
+
+      return {
+        ...shape,
+        type: newType,
+        name: newName,
+        points: newPoints
+      };
+    }));
   };
 
   const handleDeleteShape = (shapeId) => {
@@ -363,6 +581,122 @@ const App = ({ id }) => {
 
   const handlePointDragStart = () => setIsDraggingPoint(true);
   const handlePointDragEnd = () => setIsDraggingPoint(false);
+
+  // Função para gerar o COCO Dataset e salvar via dialog
+  const generateAndSaveCocoDataset = async () => {
+    if (!currentImage || !currentImageBase64) {
+      // alert('Nenhuma imagem carregada para gerar o COCO Dataset');
+      return;
+    }
+
+    // Informações básicas do COCO
+    const cocoDataset = {
+      info: {
+        description: "Dataset gerado pelo The Marker",
+        url: "",
+        version: "1.0",
+        year: new Date().getFullYear(),
+        contributor: "The Marker",
+        date_created: new Date().toISOString().split('T')[0]
+      },
+      licenses: [
+        {
+          url: "",
+          id: 1,
+          name: "Unknown"
+        }
+      ],
+      images: [
+        {
+          id: 1,
+          width: currentImage.width,
+          height: currentImage.height,
+          file_name: "annotated_image.jpg",
+          license: 1,
+          flickr_url: "",
+          coco_url: "",
+          date_captured: new Date().toISOString()
+        }
+      ],
+      annotations: [],
+      categories: [
+        {
+          id: 1,
+          name: "object",
+          supercategory: "none"
+        }
+      ]
+    };
+
+    // Converter shapes para annotations COCO
+    shapes.forEach((shape, index) => {
+      // Calcular bbox [x, y, width, height]
+      const xs = shape.points.map(p => Math.max(0, p.x));
+      const ys = shape.points.map(p => Math.max(0, p.y));
+      const xmin = Math.min(...xs);
+      const ymin = Math.min(...ys);
+      const xmax = Math.max(...xs);
+      const ymax = Math.max(...ys);
+
+      // Garantir que as coordenadas não ultrapassem os limites da imagem
+      const bbox = [
+        Math.max(0, xmin),
+        Math.max(0, ymin),
+        Math.min(currentImage.width - xmin, xmax - xmin),
+        Math.min(currentImage.height - ymin, ymax - ymin)
+      ];
+
+      // Calcular área
+      const area = (xmax - xmin) * (ymax - ymin);
+
+      // Converter pontos para segmentation COCO (formato flat array)
+      const segmentation = [shape.points.flatMap(p => [
+        Math.max(0, Math.min(p.x, currentImage.width)),
+        Math.max(0, Math.min(p.y, currentImage.height))
+      ])];
+
+      const annotation = {
+        id: index + 1,
+        image_id: 1,
+        category_id: 1,
+        segmentation: segmentation,
+        area: area,
+        bbox: bbox,
+        iscrowd: 0
+      };
+
+      cocoDataset.annotations.push(annotation);
+    });
+
+    const jsonString = JSON.stringify(cocoDataset, null, 2);
+
+    try {
+      // Abrir diálogo para salvar arquivo
+      const filePath = await save({
+        filters: [{
+          name: 'JSON',
+          extensions: ['json']
+        }]
+      });
+
+      if (filePath) {
+        // Salvar o JSON do COCO Dataset
+        await invoke('api_imagem_salvar', { caminho: filePath, conteudo: jsonString });
+
+        // Salvar a imagem original separadamente (opcional)
+        const imagePath = filePath.replace('.json', '_image.png');
+        await invoke('salvar_imagem_base64', {
+          caminho: imagePath,
+          imageBase64: currentImageBase64
+        });
+
+        // alert('Arquivo COCO Dataset salvo com sucesso! A imagem original foi preservada.');
+      }
+    } catch (error) {
+      console.error('Erro ao salvar arquivo:', error);
+      // alert('Erro ao salvar arquivo: ' + error);
+    }
+  };
 
   const stageElement = useMemo(() => (
     <Stage
@@ -435,6 +769,8 @@ const App = ({ id }) => {
         scale={scale}
         resetView={resetView}
         onImageSelect={handleImageSelect}
+        onSave={generateAndSaveCocoDataset}
+        onPreview={handlePreviewMode}
       />
       <div className="app-content">
         <div className="stage-container allow-right-click" ref={containerRef}>
@@ -510,26 +846,40 @@ const App = ({ id }) => {
         .principal {
           width: 100%;
           height: 100vh;
+          background-color: #353535;
           display: flex;
           flex-direction: column;
+          overflow: hidden;
         }
 
         .app-content {
           flex: 1;
-          position: relative;
+          padding: 10px;
+          display: flex;
+          flex-direction: column;
           overflow: hidden;
+          position: relative;
         }
 
         .stage-container {
-          width: 100%;
-          height: 100%;
+          background-color: #2a2a2a;
+          border-radius: 8px;
+          border: 1px solid #444;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+          flex: 1;
+          overflow: hidden;
+          position: relative;
+        }
+
+        .stage-container.allow-right-click {
+          cursor: default;
         }
 
         .context-menu {
-          background: white;
-          border: 1px solid #ccc;
-          border-radius: 4px;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+          background: #2a2a2a;
+          border: 1px solid #444;
+          border-radius: 8px;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.3);
           min-width: 200px;
         }
 
@@ -547,9 +897,9 @@ const App = ({ id }) => {
         .context-menu-title {
           padding: 6px 12px;
           font-size: 12px;
-          color: #665;
+          color: #ffc74b;
           font-weight: bold;
-          border-bottom: 1px solid #eee;
+          border-bottom: 1px solid #444;
           margin-bottom: 4px;
         }
 
@@ -559,26 +909,29 @@ const App = ({ id }) => {
           background: none;
           text-align: left;
           cursor: pointer;
-          border-radius: 3px;
+          border-radius: 4px;
           margin: 2px 0;
           font-size: 14px;
+          color: white;
+          font-family: "Atimo", sans-serif;
+          transition: background-color 0.2s;
         }
 
         .context-menu-item:hover {
-          background: #f0f0f0;
+          background: #444;
         }
 
         .context-menu-item.delete {
-          color: #e74c3c;
+          color: #ff6b6b;
         }
 
         .context-menu-item.delete:hover {
-          background: #ffeaea;
+          background: rgba(255, 107, 107, 0.1);
         }
 
         .context-menu-item.cancel {
-          color: #665;
-          border-top: 1px solid #eee;
+          color: #888;
+          border-top: 1px solid #444;
           margin-top: 4px;
           padding-top: 8px;
         }

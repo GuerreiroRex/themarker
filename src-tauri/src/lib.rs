@@ -1,6 +1,7 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 
 use std::time::Duration;
+use tauri::path::BaseDirectory;
 use tauri::tray::TrayIconBuilder;
 use tauri::{async_runtime, Manager};
 
@@ -14,6 +15,7 @@ pub mod mordomo;
 pub mod rotas;
 pub mod servidor;
 pub mod tabelas;
+pub mod inf;
 
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -26,6 +28,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_http::init())
         .setup(|app| {
+            let resource_path = app.path().resolve("lang/de.json", BaseDirectory::Resource)?;
+            println!("Caminho do recurso: {:?}", resource_path);
+
+            
             // pega a janela 'main' (ela foi criada mas está oculta)
             let window = app
                 .get_webview_window("main")
@@ -79,6 +85,9 @@ pub fn run() {
             db_imagens::process_multiple_images,
             db_imagens::create_image_thumbnail,
             db_imagens::process_multiple_images,
+            db_imagens::api_imagem_salvar,
+            inf::executar_script_python,
+            inf::salvar_imagem_temp,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
