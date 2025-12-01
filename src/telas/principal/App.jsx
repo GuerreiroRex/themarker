@@ -40,20 +40,20 @@ const App = ({ id }) => {
   const [currentImageBase64, setCurrentImageBase64] = useState(null); // Novo estado para armazenar a base64 da imagem original
 
   // Efeito para carregar a imagem padrão do gato
-  useEffect(() => {
-    const img = new window.Image();
-    img.src = '/gato.jpg';
-    img.onload = () => {
-      setCurrentImage(img);
-      // Converter a imagem padrão para base64
-      convertImageToBase64(img.src, (base64) => {
-        setCurrentImageBase64(base64);
-      });
-    };
-    img.onerror = (err) => {
-      console.error('Erro ao carregar /gato.jpg', err);
-    };
-  }, []);
+  // useEffect(() => {
+  //   const img = new window.Image();
+  //   img.src = '/gato.jpg';
+  //   img.onload = () => {
+  //     setCurrentImage(img);
+  //     // Converter a imagem padrão para base64
+  //     convertImageToBase64(img.src, (base64) => {
+  //       setCurrentImageBase64(base64);
+  //     });
+  //   };
+  //   img.onerror = (err) => {
+  //     console.error('Erro ao carregar /gato.jpg', err);
+  //   };
+  // }, []);
 
   // Função para converter imagem em base64
   const convertImageToBase64 = (src, callback) => {
